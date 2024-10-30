@@ -1,31 +1,50 @@
-import puppeteer, { Page } from 'puppeteer';
-import { Collection, Document, MongoClient } from 'mongodb';
+import puppeteer from 'puppeteer';
 import { MProduct, Product } from '../../models/Product';
 import * as dotenv from 'dotenv';
+import logger from 'node-color-log';
 
 dotenv.config();
 
 export default async function processAllpartsBrandProducts(brandUrl: string) {
-  const browser = await puppeteer.launch({
-    headless: Boolean(process.env.HEADLESS),
-  });
-  const page = await browser.newPage();
+  let nextUrl: string | null = brandUrl;
 
-  await page.goto(brandUrl);
+  while (nextUrl) {
+    const browser = await puppeteer.launch({
+      headless: Boolean(process.env.HEADLESS),
+    });
+    const page = await browser.newPage();
 
-  const productUrls = await page.$$eval(
-    '#product-grid .grid__item a',
-    (product) => product.map((a) => a.href)
-  );
+    await page.goto(nextUrl);
 
-  await browser.close();
+    const productUrls = await page.$$eval(
+      '#product-grid .grid__item a',
+      (product) => product.map((a) => a.href)
+    );
 
-  let lastSku: string | undefined = undefined;
+    await browser.close();
 
-  for (const productUrl of productUrls) {
-    const product = await processProducts(productUrl, lastSku);
+    let lastSku: string | undefined = undefined;
 
-    lastSku = product?.sku;
+    for (const productUrl of productUrls) {
+      try {
+        const product = await processProducts(productUrl, lastSku);
+
+        lastSku = product?.sku;
+      } catch (error) {
+        logger.error(error);
+      }
+    }
+
+    try {
+      const nextLink = await page.$eval(
+        'a.pagination__item--prev',
+        (nextLink) => nextLink.href
+      );
+
+      nextUrl = nextLink;
+    } catch (error) {
+      nextUrl = null;
+    }
   }
 }
 
@@ -50,14 +69,19 @@ async function processProducts(
     }
   );
 
-  if (!sku) return;
+  if (!sku) {
+    logger.error(`SKU not found. URL: ${productUrl}`);
+    return;
+  }
 
   const existingProduct = await MProduct.findOne({ sku: sku });
 
-  if (lastSku === sku) return { sku };
+  if (lastSku === sku) {
+    return { sku };
+  }
 
   if (existingProduct) {
-    console.log(`Existing Product: ${sku}. Skipped`);
+    logger.warn(`Existing Product: ${sku}. Skipped`);
     return { sku };
   }
 
@@ -107,16 +131,6 @@ async function processProducts(
     }
   });
 
-  console.log(`=== NEXT PRODUCT ===`);
-  console.log(`URL: ${productUrl}`);
-  console.log(`SKU: ${sku} `);
-  console.log(`Title: ${title}`);
-  console.log(`Description: ${description}`);
-  console.log(`ImageUrls: ${imageUrls.join(', ')}`);
-  console.log(`Images: ${JSON.stringify(images)}`);
-  console.log(`Featured Image: ${featuredImage}`);
-  console.log('==================');
-
   if (!sku || !title || !description || !images || !imageUrls || !featuredImage)
     return;
 
@@ -131,6 +145,9 @@ async function processProducts(
   });
 
   await product.save();
+
+  logger.color('cyan').log(`New Product: ${sku}`);
+  console.log(product);
 
   await browser.close();
 
