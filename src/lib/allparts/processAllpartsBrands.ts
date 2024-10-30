@@ -1,13 +1,58 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import { Product } from '../../types/Product';
+import { Collection, Document, MongoClient } from 'mongodb';
+import * as dotenv from 'dotenv';
 
-export default async function getProductData(
+dotenv.config();
+
+export default async function processAllpartsBrands(brandUrls: string[]) {
+  const client = new MongoClient(String(process.env.MONGODB_URI));
+  await client.connect();
+  const db = client.db('mcc-scraper');
+  const collection = db.collection('allparts');
+
+  await Promise.all(
+    brandUrls.map(async (brandUrl) => {
+      await processAllpartsProducts(brandUrl, collection);
+    })
+  );
+}
+
+async function processAllpartsProducts(
+  brandUrl: string,
+  dbCollection: Collection<Document>
+) {
+  const browser = await puppeteer.launch({
+    headless: Boolean(process.env.HEADLESS),
+  });
+  const page = await browser.newPage();
+
+  await page.goto(brandUrl);
+
+  const productUrls = await page.$$eval(
+    '#product-grid .grid__item a',
+    (product) => product.map((a) => a.href)
+  );
+
+  await browser.close();
+
+  let lastSku: string | undefined = undefined;
+
+  for (const productUrl of productUrls) {
+    const product = await processProducts(productUrl, dbCollection, lastSku);
+
+    lastSku = product?.sku;
+  }
+}
+
+async function processProducts(
   productUrl: string,
+  dbCollection: Collection<Document>,
   lastSku?: string
-): Promise<Product | undefined> {
-  console.log('URL');
-  console.log(productUrl);
-  const browser = await puppeteer.launch();
+): Promise<Product | Pick<Product, 'sku'> | undefined> {
+  const browser = await puppeteer.launch({
+    headless: Boolean(process.env.HEADLESS),
+  });
   const page = await browser.newPage();
 
   await page.goto(productUrl);
@@ -24,7 +69,14 @@ export default async function getProductData(
 
   if (!sku) return;
 
-  if (lastSku === sku) return;
+  const existingProduct = await dbCollection.findOne({ sku: sku });
+
+  if (existingProduct) {
+    console.log(`Existing Product: ${sku}. Skipped`);
+    return { sku };
+  }
+
+  if (lastSku === sku) return { sku };
 
   const title = await page.$eval(
     '.product__title h1',
@@ -72,8 +124,9 @@ export default async function getProductData(
     }
   });
 
-  console.log(`===SKU: ${sku} ===`);
+  console.log(`=== NEXT PRODUCT ===`);
   console.log(`URL: ${productUrl}`);
+  console.log(`SKU: ${sku} `);
   console.log(`Title: ${title}`);
   console.log(`Description: ${description}`);
   console.log(`ImageUrls: ${imageUrls.join(', ')}`);
@@ -81,11 +134,10 @@ export default async function getProductData(
   console.log(`Featured Image: ${featuredImage}`);
   console.log('==================');
 
-  if (!sku || !title || !description) return;
+  if (!sku || !title || !description || !images || !imageUrls || !featuredImage)
+    return;
 
-  await browser.close();
-
-  return {
+  const product = {
     sku,
     url: productUrl,
     title,
@@ -94,4 +146,10 @@ export default async function getProductData(
     imageUrls,
     featuredImage,
   };
+
+  await dbCollection.insertOne(product);
+
+  await browser.close();
+
+  return product;
 }
