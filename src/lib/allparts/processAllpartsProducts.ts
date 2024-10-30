@@ -5,7 +5,7 @@ import logger from 'node-color-log';
 
 dotenv.config();
 
-export default async function processAllpartsBrandProducts(brandUrl: string) {
+export default async function processAllpartsProducts(brandUrl: string) {
   let nextUrl: string | null = brandUrl;
 
   while (nextUrl) {
@@ -27,7 +27,7 @@ export default async function processAllpartsBrandProducts(brandUrl: string) {
 
     for (const productUrl of productUrls) {
       try {
-        const product = await processProducts(productUrl, lastSku);
+        const product = await processProduct(productUrl, lastSku);
 
         lastSku = product?.sku;
       } catch (error) {
@@ -48,7 +48,7 @@ export default async function processAllpartsBrandProducts(brandUrl: string) {
   }
 }
 
-async function processProducts(
+async function processProduct(
   productUrl: string,
   lastSku?: string
 ): Promise<Product | Pick<Product, 'sku'> | undefined> {

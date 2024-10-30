@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 import * as dotenv from 'dotenv';
-import processAllpartsBrandProducts from './processAllpartsBrandProducts';
+import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
 
 dotenv.config();
@@ -26,7 +26,7 @@ export default async function processAllparts() {
   //TODO Update to process all brands
   // for (const brandUrl of brandUrls) {
   for (const brandUrl of [brandUrls[21]]) {
-    await processAllpartsBrandProducts(brandUrl);
+    await processAllpartsProducts(brandUrl);
   }
 
   logger.success('Finished processing Allparts website');
