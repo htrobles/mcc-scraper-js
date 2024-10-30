@@ -1,11 +1,12 @@
 import puppeteer from 'puppeteer';
 import * as dotenv from 'dotenv';
+import processAllpartsBrandProducts from './processAllpartsBrandProducts';
 
 dotenv.config();
 
 const ALLPARTS_URL = 'https://www.allparts.com/pages/shop-by-brand';
 
-export default async function getAllpartsBrandUrls() {
+export default async function processAllparts() {
   const browser = await puppeteer.launch({
     headless: Boolean(process.env.HEADLESS),
   });
@@ -19,5 +20,9 @@ export default async function getAllpartsBrandUrls() {
 
   await browser.close();
 
-  return brandUrls;
+  //TODO Update to process all brands
+  // for (const brandUrl of brandUrls) {
+  for (const brandUrl of [brandUrls[0]]) {
+    await processAllpartsBrandProducts(brandUrl);
+  }
 }

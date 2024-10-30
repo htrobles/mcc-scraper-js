@@ -1,27 +1,11 @@
 import puppeteer, { Page } from 'puppeteer';
-import { Product } from '../../types/Product';
 import { Collection, Document, MongoClient } from 'mongodb';
+import { MProduct, Product } from '../../models/Product';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-export default async function processAllpartsBrands(brandUrls: string[]) {
-  const client = new MongoClient(String(process.env.MONGODB_URI));
-  await client.connect();
-  const db = client.db('mcc-scraper');
-  const collection = db.collection('allparts');
-
-  await Promise.all(
-    brandUrls.map(async (brandUrl) => {
-      await processAllpartsProducts(brandUrl, collection);
-    })
-  );
-}
-
-async function processAllpartsProducts(
-  brandUrl: string,
-  dbCollection: Collection<Document>
-) {
+export default async function processAllpartsBrandProducts(brandUrl: string) {
   const browser = await puppeteer.launch({
     headless: Boolean(process.env.HEADLESS),
   });
@@ -39,7 +23,7 @@ async function processAllpartsProducts(
   let lastSku: string | undefined = undefined;
 
   for (const productUrl of productUrls) {
-    const product = await processProducts(productUrl, dbCollection, lastSku);
+    const product = await processProducts(productUrl, lastSku);
 
     lastSku = product?.sku;
   }
@@ -47,7 +31,6 @@ async function processAllpartsProducts(
 
 async function processProducts(
   productUrl: string,
-  dbCollection: Collection<Document>,
   lastSku?: string
 ): Promise<Product | Pick<Product, 'sku'> | undefined> {
   const browser = await puppeteer.launch({
@@ -69,14 +52,14 @@ async function processProducts(
 
   if (!sku) return;
 
-  const existingProduct = await dbCollection.findOne({ sku: sku });
+  const existingProduct = await MProduct.findOne({ sku: sku });
+
+  if (lastSku === sku) return { sku };
 
   if (existingProduct) {
     console.log(`Existing Product: ${sku}. Skipped`);
     return { sku };
   }
-
-  if (lastSku === sku) return { sku };
 
   const title = await page.$eval(
     '.product__title h1',
@@ -137,7 +120,7 @@ async function processProducts(
   if (!sku || !title || !description || !images || !imageUrls || !featuredImage)
     return;
 
-  const product = {
+  const product = new MProduct({
     sku,
     url: productUrl,
     title,
@@ -145,9 +128,9 @@ async function processProducts(
     images,
     imageUrls,
     featuredImage,
-  };
+  });
 
-  await dbCollection.insertOne(product);
+  await product.save();
 
   await browser.close();
 

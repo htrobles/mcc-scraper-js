@@ -1,10 +1,15 @@
-import getAllpartsBrandUrls from './lib/allparts/getAllpartsBrandUrls';
-import processAllpartsBrands from './lib/allparts/processAllpartsBrands';
+import mongoose from 'mongoose';
+
+import * as dotenv from 'dotenv';
+import processAllparts from './lib/allparts/processAllparts';
+
+dotenv.config();
 
 async function main() {
-  const brandUrls = await getAllpartsBrandUrls();
-  const [first] = brandUrls;
-  await processAllpartsBrands([first]);
+  await mongoose.connect(String(process.env.MONGODB_URI));
+  await processAllparts();
+
+  await mongoose.connection.close();
 }
 
 main();
