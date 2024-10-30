@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer';
 import { MProduct, Product } from '../../models/Product';
 import * as dotenv from 'dotenv';
 import logger from 'node-color-log';
+import saveImage from '../utils/saveImage';
 
 dotenv.config();
 
@@ -124,12 +125,16 @@ async function processProduct(
   const imageUrls: string[] = [];
   let featuredImage = '';
 
-  imageData.forEach(({ url, imageName, isFeatured }) => {
+  for (const data of imageData) {
+    const { url, imageName, isFeatured } = data;
+
+    await saveImage(url, imageName, './output/allparts/images');
+
     images.push(imageName), imageUrls.push(url);
     if (isFeatured) {
       featuredImage = imageName;
     }
-  });
+  }
 
   if (!sku || !title || !description || !images || !imageUrls || !featuredImage)
     return;
