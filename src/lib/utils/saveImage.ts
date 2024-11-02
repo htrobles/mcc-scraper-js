@@ -12,6 +12,7 @@ export default async function saveImage(
     url: imageUrl,
     directory: outputDir,
     fileName: imageName,
+    cloneFiles: false,
   });
 
   await downloader.download();

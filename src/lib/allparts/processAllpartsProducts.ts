@@ -1,64 +1,121 @@
-import puppeteer from 'puppeteer';
-import { MProduct, Product } from '../../models/Product';
+import puppeteer, { Page } from 'puppeteer';
+import { MProduct, Product, SupplierEnum } from '../../models/Product';
 import * as dotenv from 'dotenv';
 import logger from 'node-color-log';
 import saveImage from '../utils/saveImage';
 
 dotenv.config();
-
-export default async function processAllpartsProducts(brandUrl: string) {
-  let nextUrl: string | null = brandUrl;
-
-  while (nextUrl) {
-    const browser = await puppeteer.launch({
-      headless: Boolean(process.env.HEADLESS),
-    });
-    const page = await browser.newPage();
-
-    await page.goto(nextUrl);
-
-    const productUrls = await page.$$eval(
-      '#product-grid .grid__item a',
-      (product) => product.map((a) => a.href)
-    );
-
-    await browser.close();
-
-    let lastSku: string | undefined = undefined;
-
-    for (const productUrl of productUrls) {
-      try {
-        const product = await processProduct(productUrl, lastSku);
-
-        lastSku = product?.sku;
-      } catch (error) {
-        logger.error(error);
-      }
-    }
-
-    try {
-      const nextLink = await page.$eval(
-        'a.pagination__item--prev',
-        (nextLink) => nextLink.href
-      );
-
-      nextUrl = nextLink;
-    } catch (error) {
-      nextUrl = null;
-    }
-  }
+interface SelectData {
+  id: string;
+  values: string[];
 }
 
-async function processProduct(
-  productUrl: string,
-  lastSku?: string
-): Promise<Product | Pick<Product, 'sku'> | undefined> {
+export default async function processAllpartsProducts(categoryUrl: string) {
+  let nextUrl: string | null = categoryUrl;
   const browser = await puppeteer.launch({
     headless: Boolean(process.env.HEADLESS),
   });
   const page = await browser.newPage();
 
+  while (nextUrl) {
+    await page.goto(nextUrl);
+
+    const productUrls = await page.$$eval(
+      '#product-grid .grid__item h3 a',
+      (product) => product.map((a) => a.href)
+    );
+
+    const pageNum = nextUrl.split('=')[1] ? parseInt(nextUrl.split('=')[1]) : 1;
+    logger.info(`Processing Page Number: ${pageNum}`);
+
+    for (const productUrl of productUrls) {
+      try {
+        await processProductUrl(productUrl);
+      } catch (error) {
+        logger.error(error);
+      }
+    }
+
+    nextUrl = await getNextCategoryUrl(page);
+  }
+
+  await browser.close();
+}
+
+export async function processProductUrl(productUrl: string) {
+  const browser = await puppeteer.launch({
+    headless: Boolean(process.env.HEADLESS),
+  });
+  logger.warn(productUrl);
+  const page = await browser.newPage();
+
   await page.goto(productUrl);
+
+  const selectData: SelectData[] = await page.$$eval(
+    'variant-selects select',
+    (selects) =>
+      selects.map((select) => {
+        const id = select.id;
+        const options = Array.from(select.options);
+        const values = options.map((option) => option.value);
+
+        return { id, values };
+      })
+  );
+
+  if (!selectData.length) {
+    await processProduct(page);
+    logger.info('Product Variants found');
+  } else {
+    await processVariantSelects(page, selectData);
+  }
+
+  await browser.close();
+}
+
+async function processVariantSelects(
+  page: Page,
+  selectData: SelectData[],
+  index: number = 0,
+  variantTree: string[] = []
+) {
+  const data = selectData[index];
+  const { id, values } = data;
+
+  for (const value of values) {
+    await page.select(`#${id}`, value);
+    logger.info(`Selection, ${[...variantTree, value].join('-')}`);
+    logger.info(`New page URL: ${page.url()}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+
+    if (selectData[index + 1]) {
+      const newSelectData: SelectData[] = await page.$$eval(
+        'variant-selects select',
+        (selects) =>
+          selects.map((select) => {
+            const id = select.id;
+            const options = Array.from(select.options);
+            const values = options.map((option) => option.value);
+
+            return { id, values };
+          })
+      );
+
+      await processVariantSelects(page, newSelectData, index + 1, [
+        ...variantTree,
+        value,
+      ]);
+    } else {
+      await processProduct(page, [...variantTree, value]);
+    }
+  }
+}
+
+async function processProduct(
+  page: Page,
+  variantTree?: string[]
+): Promise<Product | Pick<Product, 'sku'> | undefined> {
+  const productUrl = page.url();
 
   const sku = await page.$$eval(
     '.product__info-box .information',
@@ -77,26 +134,24 @@ async function processProduct(
 
   const existingProduct = await MProduct.findOne({ sku: sku });
 
-  if (lastSku === sku) {
-    return { sku };
-  }
-
-  if (existingProduct) {
-    logger.warn(`Existing Product: ${sku}. Skipped`);
-    return { sku };
-  }
-
-  const title = await page.$eval(
+  let title = await page.$eval(
     '.product__title h1',
     (title) => title.textContent
   );
 
-  const description = (
-    await page.$eval(
-      'truncate-text.product__description',
-      (description) => description.textContent
-    )
-  )?.trim();
+  if (variantTree?.length) {
+    title = [title, ...variantTree].join('-');
+  }
+
+  if (existingProduct) {
+    logger.warn(`Existing Product: ${sku}. Skipped | ${title}`);
+    return { sku };
+  }
+
+  const description = await page.$eval(
+    'truncate-text.product__description',
+    (description) => description.textContent?.trim().replace(/\n/g, '\\n')
+  );
 
   const imageData = await page.$$eval(
     '.product__media-list .product__media-item',
@@ -136,8 +191,16 @@ async function processProduct(
     }
   }
 
-  if (!sku || !title || !description || !images || !imageUrls || !featuredImage)
+  if (
+    !sku ||
+    !title ||
+    !description ||
+    !images ||
+    !imageUrls ||
+    !featuredImage
+  ) {
     return;
+  }
 
   const product = new MProduct({
     sku,
@@ -147,14 +210,27 @@ async function processProduct(
     images,
     imageUrls,
     featuredImage,
+    supplier: SupplierEnum.ALLPARTS,
   });
 
   await product.save();
 
-  logger.color('cyan').log(`New Product: ${sku}`);
-  console.log(product);
-
-  await browser.close();
+  logger.bgColorLog('cyan', `New Product: ${sku}`);
 
   return product;
+}
+
+async function getNextCategoryUrl(page: Page) {
+  try {
+    const nextUrl = await page.$eval(
+      'a.pagination__item--prev',
+      (nextLink) => nextLink.href
+    );
+
+    return nextUrl;
+  } catch (error) {
+    logger.info('NEXT LINK NOT FOUND');
+    console.log(error);
+    return null;
+  }
 }

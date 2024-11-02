@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 
+export enum SupplierEnum {
+  ALLPARTS = 'AllParts',
+}
+
 export interface Product {
   sku: string;
   url: string;
@@ -8,6 +12,7 @@ export interface Product {
   imageUrls: string[];
   images: string[];
   featuredImage: string;
+  supplier: SupplierEnum;
 }
 
 const productSchema = new mongoose.Schema({
@@ -18,6 +23,7 @@ const productSchema = new mongoose.Schema({
   imageUrls: { required: true, type: [String] },
   images: { required: true, type: [String] },
   featuredImage: { required: true, type: String },
+  supplier: { required: true, type: String, enum: Object.values(SupplierEnum) },
 });
 
 export const MProduct = mongoose.model('Product', productSchema);

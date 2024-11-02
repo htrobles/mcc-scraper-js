@@ -2,10 +2,12 @@ import puppeteer from 'puppeteer';
 import * as dotenv from 'dotenv';
 import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
+import { MProduct, Product, SupplierEnum } from '../../models/Product';
+import generateCsv from '../utils/generateCsv';
 
 dotenv.config();
 
-const ALLPARTS_URL = 'https://www.allparts.com/pages/shop-by-brand';
+const ALLPARTS_URL = 'https://www.allparts.com/pages/shop-by-category';
 
 export default async function processAllparts() {
   logger.info(' Processing Allparts website ');
@@ -17,17 +19,23 @@ export default async function processAllparts() {
 
   await page.goto(ALLPARTS_URL);
 
-  const brandUrls = await page.$$eval('.por .grid__item a', (brand) =>
-    brand.map((a) => a.href)
+  const categoryUrls = await page.$$eval(
+    '#MainContent .collection-list__item a',
+    (brand) => brand.map((a) => a.href)
   );
 
   await browser.close();
 
   //TODO Update to process all brands
-  // for (const brandUrl of brandUrls) {
-  for (const brandUrl of [brandUrls[21]]) {
-    await processAllpartsProducts(brandUrl);
+  // for (const categoryUrl of categoryUrls) {
+  for (const categoryUrl of [categoryUrls[13]]) {
+    await processAllpartsProducts(categoryUrl);
   }
 
+  const products: Product[] = await MProduct.find({
+    supplier: SupplierEnum.ALLPARTS,
+  }).lean();
+
   logger.success('Finished processing Allparts website');
+  // await generateCsv(products, 'allparts.csv', './output/allparts');
 }

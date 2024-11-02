@@ -1,6 +1,5 @@
 import { Db, MongoClient } from 'mongodb';
 
-// database.js
 let db: Db;
 
 async function connectToDatabase() {
