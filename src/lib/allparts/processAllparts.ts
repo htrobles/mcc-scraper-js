@@ -1,12 +1,9 @@
 import puppeteer from 'puppeteer';
-import * as dotenv from 'dotenv';
 import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
 import { MProduct, Product, SupplierEnum } from '../../models/Product';
 import generateCsv from '../utils/generateCsv';
 import config from '../../config';
-
-const ALLPARTS_URL = 'https://www.allparts.com/pages/shop-by-category';
 
 export default async function processAllparts() {
   logger.info(' Processing Allparts website ');
@@ -16,7 +13,7 @@ export default async function processAllparts() {
   });
   const page = await browser.newPage();
 
-  await page.goto(ALLPARTS_URL);
+  await page.goto(config.ALLPARTS_URL);
 
   const categoryUrls = await page.$$eval(
     '#MainContent .collection-list__item a',

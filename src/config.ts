@@ -5,8 +5,9 @@ dotenv.config();
 
 const config = cleanEnv(process.env, {
   HEADLESS: bool({ default: true }),
-  MONGODB_URI: str(),
   CLEAR_DB: bool({ default: false }),
+  MONGODB_URI: str(),
+  ALLPARTS_URL: str(),
 });
 
 export default config;
