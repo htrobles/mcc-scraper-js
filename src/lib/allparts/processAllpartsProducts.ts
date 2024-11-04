@@ -46,7 +46,6 @@ export async function processProductUrl(productUrl: string) {
   const browser = await puppeteer.launch({
     headless: Boolean(process.env.HEADLESS),
   });
-  logger.warn(productUrl);
   const page = await browser.newPage();
 
   await page.goto(productUrl);
@@ -84,8 +83,7 @@ async function processVariantSelects(
 
   for (const value of values) {
     await page.select(`#${id}`, value);
-    logger.info(`Selection, ${[...variantTree, value].join('-')}`);
-    logger.info(`New page URL: ${page.url()}`);
+
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
 
     if (selectData[index + 1]) {
@@ -215,7 +213,7 @@ async function processProduct(
 
   await product.save();
 
-  logger.bgColorLog('cyan', `New Product: ${sku}`);
+  logger.success(`New Product: ${sku} | ${title}`);
 
   return product;
 }
@@ -230,7 +228,6 @@ async function getNextCategoryUrl(page: Page) {
     return nextUrl;
   } catch (error) {
     logger.info('NEXT LINK NOT FOUND');
-    console.log(error);
     return null;
   }
 }

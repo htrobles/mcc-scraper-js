@@ -26,9 +26,7 @@ export default async function processAllparts() {
 
   await browser.close();
 
-  //TODO Update to process all brands
-  // for (const categoryUrl of categoryUrls) {
-  for (const categoryUrl of [categoryUrls[13]]) {
+  for (const categoryUrl of categoryUrls) {
     await processAllpartsProducts(categoryUrl);
   }
 
@@ -37,5 +35,5 @@ export default async function processAllparts() {
   }).lean();
 
   logger.success('Finished processing Allparts website');
-  // await generateCsv(products, 'allparts.csv', './output/allparts');
+  await generateCsv(products, 'allparts.csv', './output/allparts');
 }
