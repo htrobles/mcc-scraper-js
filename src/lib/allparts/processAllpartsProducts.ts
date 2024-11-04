@@ -153,7 +153,7 @@ async function processProduct(
       let html: string;
 
       if (!children.length) {
-        html = `<p>${description.textContent}</p>`;
+        html = `<p>${description.textContent?.trim()}</p>`;
       } else {
         const childrenHtml = [];
 
