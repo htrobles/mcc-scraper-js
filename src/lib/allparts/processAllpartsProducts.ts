@@ -63,8 +63,8 @@ export async function processProductUrl(productUrl: string) {
 
   if (!selectData.length) {
     await processProduct(page);
-    logger.info('Product Variants found');
   } else {
+    logger.info('Product Variants found');
     await processVariantSelects(page, selectData);
   }
 
