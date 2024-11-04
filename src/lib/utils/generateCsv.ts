@@ -1,6 +1,6 @@
-import { Product } from 'src/models/Product';
 import logger from 'node-color-log';
 import { createObjectCsvWriter } from 'csv-writer';
+import { Product } from '../../models/Product';
 
 export default async function generateCsv(
   products: Product[],
@@ -10,7 +10,8 @@ export default async function generateCsv(
   const headers = [
     { id: 'sku', title: 'Manufacturer SKU' },
     { id: 'title', title: 'Title' },
-    { id: 'description', title: 'Description' },
+    { id: 'descriptionText', title: 'Description Text' },
+    { id: 'descriptionHtml', title: 'Description HTML' },
     { id: 'images', title: 'Images' },
     { id: 'imageUrls', title: 'Image URLS' },
     { id: 'featuredImage', title: 'Featured Image' },
@@ -33,6 +34,6 @@ export default async function generateCsv(
 
   csvWriter
     .writeRecords(products)
-    .then(() => console.log('CSV file created successfully'))
+    .then(() => logger.success('CSV file created successfully'))
     .catch((err) => logger.error(err));
 }

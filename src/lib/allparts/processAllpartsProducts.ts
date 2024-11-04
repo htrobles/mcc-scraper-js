@@ -1,10 +1,9 @@
 import puppeteer, { Page } from 'puppeteer';
 import { MProduct, Product, SupplierEnum } from '../../models/Product';
-import * as dotenv from 'dotenv';
 import logger from 'node-color-log';
 import saveImage from '../utils/saveImage';
+import config from '../../config';
 
-dotenv.config();
 interface SelectData {
   id: string;
   values: string[];
@@ -13,7 +12,7 @@ interface SelectData {
 export default async function processAllpartsProducts(categoryUrl: string) {
   let nextUrl: string | null = categoryUrl;
   const browser = await puppeteer.launch({
-    headless: Boolean(process.env.HEADLESS),
+    headless: config.HEADLESS,
   });
   const page = await browser.newPage();
 
@@ -44,7 +43,7 @@ export default async function processAllpartsProducts(categoryUrl: string) {
 
 export async function processProductUrl(productUrl: string) {
   const browser = await puppeteer.launch({
-    headless: Boolean(process.env.HEADLESS),
+    headless: config.HEADLESS,
   });
   const page = await browser.newPage();
 
@@ -147,8 +146,26 @@ async function processProduct(
   }
 
   const description = await page.$eval(
-    'truncate-text.product__description',
-    (description) => description.textContent?.trim().replace(/\n/g, '\\n')
+    'truncate-text.product__description .truncate-text__content',
+    (description) => {
+      const text = description.textContent?.trim().replace(/\n/g, '\\n');
+      const children = description.children;
+      let html: string;
+
+      if (!children.length) {
+        html = `<p>${description.textContent}</p>`;
+      } else {
+        const childrenHtml = [];
+
+        for (const child of children) {
+          childrenHtml.push(child.outerHTML);
+        }
+
+        html = childrenHtml.join();
+      }
+
+      return { text, html };
+    }
   );
 
   const imageData = await page.$$eval(
@@ -204,7 +221,8 @@ async function processProduct(
     sku,
     url: productUrl,
     title,
-    description,
+    descriptionText: description.text,
+    descriptionHtml: description.html,
     images,
     imageUrls,
     featuredImage,

@@ -3,16 +3,18 @@ import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
 import processAllparts from './lib/allparts/processAllparts';
 import logger from 'node-color-log';
-import { processProductUrl } from './lib/allparts/processAllpartsProducts';
 import { MProduct, SupplierEnum } from './models/Product';
-
-dotenv.config();
+import { processProductUrl } from './lib/allparts/processAllpartsProducts';
+import config from './config';
 
 async function main() {
-  await mongoose.connect(String(process.env.MONGODB_URI));
+  await mongoose.connect(config.MONGODB_URI);
   logger.success('Connected to Database');
 
-  await MProduct.deleteMany({ supplier: SupplierEnum.ALLPARTS }); // TODO: Delete this
+  if (config.CLEAR_DB !== undefined && config.CLEAR_DB) {
+    logger.warn('CLEARING DATABASE');
+    await MProduct.deleteMany({ supplier: SupplierEnum.ALLPARTS }); // TODO: Delete this
+  }
 
   await processAllparts();
 

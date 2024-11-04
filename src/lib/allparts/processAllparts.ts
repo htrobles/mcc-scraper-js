@@ -4,8 +4,7 @@ import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
 import { MProduct, Product, SupplierEnum } from '../../models/Product';
 import generateCsv from '../utils/generateCsv';
-
-dotenv.config();
+import config from '../../config';
 
 const ALLPARTS_URL = 'https://www.allparts.com/pages/shop-by-category';
 
@@ -13,7 +12,7 @@ export default async function processAllparts() {
   logger.info(' Processing Allparts website ');
 
   const browser = await puppeteer.launch({
-    headless: Boolean(process.env.HEADLESS),
+    headless: config.HEADLESS,
   });
   const page = await browser.newPage();
 
