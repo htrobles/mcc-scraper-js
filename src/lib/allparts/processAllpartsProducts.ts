@@ -176,7 +176,11 @@ async function processProduct(
         const imgUrl = imgContainer.querySelector('img')?.src as string;
 
         const lastDotIndex = imgUrl.lastIndexOf('.');
-        const extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
+        let extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
+
+        if (!['jpg', 'png'].includes(extension)) {
+          extension = 'png';
+        }
 
         const imageName = `${sku}-${index}.${extension}`.toLowerCase();
 
@@ -199,9 +203,10 @@ async function processProduct(
 
     await saveImage(url, imageName, './output/allparts/images');
 
-    images.push(imageName);
     if (isFeatured) {
       featuredImage = imageName;
+    } else {
+      images.push(imageName);
     }
   }
 
