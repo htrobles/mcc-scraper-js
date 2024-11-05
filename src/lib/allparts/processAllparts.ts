@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
-import { MProduct, Product, SupplierEnum } from '../../models/Product';
+import { MProduct, SupplierEnum } from '../../models/Product';
 import generateCsv from '../utils/generateCsv';
 import config from '../../config';
 
@@ -26,9 +26,35 @@ export default async function processAllparts() {
     await processAllpartsProducts(categoryUrl);
   }
 
-  const products: Product[] = await MProduct.find({
-    supplier: SupplierEnum.ALLPARTS,
-  }).lean();
+  const products = (
+    await MProduct.find({
+      supplier: SupplierEnum.ALLPARTS,
+    }).lean()
+  ).map(
+    ({
+      sku,
+      title,
+      descriptionText,
+      descriptionHtml,
+      images,
+      featuredImage,
+    }) => {
+      const product: { [key: string]: any } = {
+        sku,
+        title,
+        descriptionText,
+        descriptionHtml,
+        featuredImage,
+        image0: images[0],
+      };
+
+      images.forEach((imageName, index) => {
+        product[`image${index}`] = imageName;
+      });
+
+      return product;
+    }
+  );
 
   logger.success('Finished processing Allparts website');
   await generateCsv(products, 'allparts.csv', './output/allparts');

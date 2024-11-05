@@ -178,7 +178,7 @@ async function processProduct(
         const lastDotIndex = imgUrl.lastIndexOf('.');
         const extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
 
-        const imageName = `${sku}-${index}.${extension}`;
+        const imageName = `${sku}-${index}.${extension}`.toLowerCase();
 
         images.push(imageName);
 

@@ -1,9 +1,8 @@
 import logger from 'node-color-log';
 import { createObjectCsvWriter } from 'csv-writer';
-import { Product } from '../../models/Product';
 
 export default async function generateCsv(
-  products: Product[],
+  products: { [key: string]: any }[],
   filename: string,
   outDir: string
 ) {
@@ -11,12 +10,20 @@ export default async function generateCsv(
     { id: 'sku', title: 'Manufacturer SKU' },
     { id: 'title', title: 'Title' },
     { id: 'descriptionText', title: 'Description Text' },
-    { id: 'descriptionHtml', title: 'Description HTML' },
-    { id: 'images', title: 'Images' },
-    { id: 'imageUrls', title: 'Image URLS' },
+    { id: 'descriptionHtml', title: 'Body HTML' },
     { id: 'featuredImage', title: 'Featured Image' },
-    { id: 'url', title: 'URL' },
-    { id: 'supplier', title: 'Supplier' },
+    { id: 'image0', title: 'Image' },
+    { id: 'image1', title: 'Image' },
+    { id: 'image2', title: 'Image' },
+    { id: 'image3', title: 'Image' },
+    { id: 'image4', title: 'Image' },
+    { id: 'image5', title: 'Image' },
+    { id: 'image6', title: 'Image' },
+    { id: 'image7', title: 'Image' },
+    { id: 'image8', title: 'Image' },
+    { id: 'image9', title: 'Image' },
+    { id: 'image10', title: 'Image' },
+    { id: 'image11', title: 'Image' },
   ];
 
   let finalFilename = filename;
@@ -31,6 +38,8 @@ export default async function generateCsv(
     path: pathname,
     header: headers,
   });
+
+  const rows = [];
 
   csvWriter
     .writeRecords(products)
