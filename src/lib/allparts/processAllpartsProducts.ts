@@ -192,7 +192,6 @@ async function processProduct(
   );
 
   const images: string[] = [];
-  const imageUrls: string[] = [];
   let featuredImage = '';
 
   for (const data of imageData) {
@@ -200,31 +199,22 @@ async function processProduct(
 
     await saveImage(url, imageName, './output/allparts/images');
 
-    images.push(imageName), imageUrls.push(url);
+    images.push(imageName);
     if (isFeatured) {
       featuredImage = imageName;
     }
   }
 
-  if (
-    !sku ||
-    !title ||
-    !description ||
-    !images ||
-    !imageUrls ||
-    !featuredImage
-  ) {
+  if (!sku || !title || !description || !images || !featuredImage) {
     return;
   }
 
   const product = new MProduct({
     sku,
-    url: productUrl,
     title,
     descriptionText: description.text,
     descriptionHtml: description.html,
     images,
-    imageUrls,
     featuredImage,
     supplier: SupplierEnum.ALLPARTS,
   });
