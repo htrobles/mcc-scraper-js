@@ -116,65 +116,64 @@ export async function processProductUrl(productUrl: string) {
 
   console.log({ sku, title, description });
 
-  //   const imageData = await page.$$eval(
-  //     '.product__media-list .product__media-item',
-  //     (imgContainers, sku) =>
-  //       imgContainers.map((imgContainer, index) => {
-  //         const images: string[] = [];
-  //         const imgUrl = imgContainer.querySelector('img')?.src as string;
+  const imageData = await page.$$eval(
+    '#gallery .thumbnailLink',
+    (thumbnails, sku) =>
+      thumbnails.map((thumbnail, index) => {
+        const imgUrl = thumbnail
+          .getAttribute('data-image')
+          ?.replace('~lg', '~hqw') as string;
 
-  //         const lastDotIndex = imgUrl.lastIndexOf('.');
-  //         let extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
+        const lastDotIndex = imgUrl.lastIndexOf('.');
+        let extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
 
-  //         if (!['jpg', 'png'].includes(extension)) {
-  //           extension = 'png';
-  //         }
+        if (!['jpg', 'png'].includes(extension)) {
+          extension = 'png';
+        }
 
-  //         const imageName = `${sku}-${index}.${extension}`.toLowerCase();
+        const imageName = `${sku}-${index}.${extension}`.toLowerCase();
 
-  //         images.push(imageName);
+        return {
+          url: imgUrl as string,
+          imageName,
+          isFeatured: index === 0,
+        };
+      }),
+    sku
+  );
 
-  //         return {
-  //           url: imgUrl as string,
-  //           imageName,
-  //           isFeatured: imgContainer.classList.contains('is-active'),
-  //         };
-  //       }),
-  //     sku
-  //   );
+  const images: string[] = [];
+  let featuredImage = '';
 
-  //   const images: string[] = [];
-  //   let featuredImage = '';
+  for (const data of imageData) {
+    const { url, imageName, isFeatured } = data;
 
-  //   for (const data of imageData) {
-  //     const { url, imageName, isFeatured } = data;
+    await saveImage(url, imageName, './output/coastMusic/images');
 
-  //     await saveImage(url, imageName, './output/allparts/images');
+    if (isFeatured) {
+      featuredImage = imageName;
+    } else {
+      images.push(imageName);
+    }
+  }
 
-  //     if (isFeatured) {
-  //       featuredImage = imageName;
-  //     } else {
-  //       images.push(imageName);
-  //     }
-  //   }
+  if (!sku || !title || !description || !images || !featuredImage) {
+    return;
+  }
 
-  // if (!sku || !title || !description || !images || !featuredImage) {
-  //     return;
-  //   }
+  const product = new MProduct({
+    sku,
+    title,
+    descriptionText: description.text,
+    descriptionHtml: description.html,
+    images,
+    featuredImage,
+    supplier: SupplierEnum.COASTMUSIC,
+  });
 
-  //   const product = new MProduct({
-  //     sku,
-  //     title,
-  //     descriptionText: description.text,
-  //     descriptionHtml: description.html,
-  //     images,
-  //     featuredImage,
-  //     supplier: SupplierEnum.ALLPARTS,
-  //   });
+  await product.save();
 
-  //   await product.save();
-
-  //   logger.success(`New Product: ${sku} | ${title}`);
+  logger.success(`New Product: ${sku} | ${title}`);
 
   await browser.close();
 }

@@ -14,14 +14,14 @@ async function main() {
 
   if (config.CLEAR_DB !== undefined && config.CLEAR_DB) {
     logger.warn('CLEARING DATABASE');
-    await MProduct.deleteMany({ supplier: SupplierEnum.ALLPARTS });
+    await MProduct.deleteMany({ supplier: SupplierEnum.COASTMUSIC });
   }
 
   // await processAllparts();
-  await processCoastMusic();
-  // await processProductUrl(
-  //   'https://coastmusiconline.com/Catalog/ProductDetail?itemId=LEC1000SBLKFLH'
-  // );
+  // await processCoastMusic();
+  await processProductUrl(
+    'https://coastmusiconline.com/Catalog/ProductDetail?itemId=LEC1000SBLKFLH'
+  );
 
   await mongoose.connection.close();
   logger.success('All Process done. Database connection closed');
