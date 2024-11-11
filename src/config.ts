@@ -8,6 +8,7 @@ const config = cleanEnv(process.env, {
   CLEAR_DB: bool({ default: false }),
   MONGODB_URI: str(),
   ALLPARTS_URL: str(),
+  COAST_MUSIC_URL: str(),
 });
 
 export default config;
