@@ -114,8 +114,6 @@ export async function processProductUrl(productUrl: string) {
     return { text, html };
   });
 
-  console.log({ sku, title, description });
-
   const imageData = await page.$$eval(
     '#gallery .thumbnailLink',
     (thumbnails, sku) =>
