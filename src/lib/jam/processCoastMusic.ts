@@ -1,13 +1,11 @@
-import puppeteer, { Page } from 'puppeteer';
-import { MProduct, Product, SupplierEnum } from '../../models/Product';
+import puppeteer from 'puppeteer';
+import { MProduct, SupplierEnum } from '../../models/Product';
 import logger from 'node-color-log';
 import saveImage from '../utils/saveImage';
 import config from '../../config';
-
-interface SelectData {
-  id: string;
-  values: string[];
-}
+import generateCsv from '../utils/generateCsv';
+import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
+import { minify } from 'html-minifier';
 
 export default async function processCoastMusic() {
   let hasNextPage = true;
@@ -34,7 +32,7 @@ export default async function processCoastMusic() {
       try {
         await processProductUrl(productUrl);
       } catch (error) {
-        logger.error(error);
+        logger.error(`${productUrl}: ${error}`);
       }
     }
 
@@ -60,13 +58,17 @@ export default async function processCoastMusic() {
   }
 
   await browser.close();
+
+  const products = await getSupplierProductsOutput(SupplierEnum.COASTMUSIC);
+
+  logger.success('Finished processing Coast Music website');
+  await generateCsv(products, 'coastMusic.csv', './output/coastMusic');
 }
 
 export async function processProductUrl(productUrl: string) {
   const browser = await puppeteer.launch({
     headless: config.HEADLESS,
   });
-  console.log(productUrl);
 
   const page = await browser.newPage();
 
@@ -94,25 +96,21 @@ export async function processProductUrl(productUrl: string) {
     return { sku };
   }
 
-  const description = await page.$eval('.descriptionDetail', (description) => {
-    const text = description.textContent?.trim().replace(/\n/g, '\\n');
-    const children = description.children;
-    let html: string;
+  const description = await page.$eval(
+    '.descriptionDetail .floatLeft',
+    (description) => {
+      const newDescription = document.createElement('div');
+      const [_, __, ...nodes] = description.childNodes;
 
-    if (!children.length) {
-      html = `<p>${description.textContent?.trim()}</p>`;
-    } else {
-      const childrenHtml = [];
-
-      for (const child of children) {
-        childrenHtml.push(child.outerHTML);
+      for (let node of nodes) {
+        newDescription.appendChild(node);
       }
 
-      html = childrenHtml.join();
-    }
+      const text = newDescription.textContent?.trim().replace(/\n/g, '\\n');
 
-    return { text, html };
-  });
+      return { text, html: newDescription.outerHTML };
+    }
+  );
 
   const imageData = await page.$$eval(
     '#gallery .thumbnailLink',
@@ -159,11 +157,17 @@ export async function processProductUrl(productUrl: string) {
     return;
   }
 
+  const minifiedHtmlDesc = minify(description.html, {
+    removeTagWhitespace: true,
+    collapseWhitespace: true,
+    collapseInlineTagWhitespace: true,
+  });
+
   const product = new MProduct({
     sku,
     title,
     descriptionText: description.text,
-    descriptionHtml: description.html,
+    descriptionHtml: minifiedHtmlDesc,
     images,
     featuredImage,
     supplier: SupplierEnum.COASTMUSIC,
