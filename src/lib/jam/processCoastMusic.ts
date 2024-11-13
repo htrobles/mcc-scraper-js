@@ -11,6 +11,7 @@ export default async function processCoastMusic() {
   let hasNextPage = true;
   const browser = await puppeteer.launch({
     headless: config.HEADLESS,
+    protocolTimeout: 60000,
   });
   const page = await browser.newPage();
   let pageNum = 1;
@@ -19,6 +20,7 @@ export default async function processCoastMusic() {
     const url = `${config.COAST_MUSIC_URL}#${pageNum}`;
     await page.goto(url, {
       waitUntil: ['domcontentloaded', 'load', 'networkidle0', 'networkidle2'],
+      timeout: 60000,
     });
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -68,114 +70,123 @@ export default async function processCoastMusic() {
 export async function processProductUrl(productUrl: string) {
   const browser = await puppeteer.launch({
     headless: config.HEADLESS,
+    protocolTimeout: 60000,
   });
 
   const page = await browser.newPage();
 
-  await page.goto(productUrl);
+  await page.goto(productUrl, { timeout: 60000 });
 
-  const sku = await page.$eval('.catalogTileID', (catalogId) => {
-    const sku = catalogId.textContent?.split(':')[1].trim();
+  try {
+    const sku = await page.$eval('.catalogTileID', (catalogId) => {
+      const sku = catalogId.textContent?.split(':')[1].trim();
 
-    return sku;
-  });
+      return sku;
+    });
 
-  if (!sku) {
-    logger.error(`SKU not found. URL: ${productUrl}`);
-    return;
-  }
+    if (!sku) {
+      logger.error(`SKU not found. URL: ${productUrl}`);
+      await browser.close();
+      return;
+    }
 
-  const existingProduct = await MProduct.findOne({ sku: sku });
+    const existingProduct = await MProduct.findOne({ sku: sku });
 
-  let title = await page.$eval('#itemTitle strong', (title) =>
-    title.textContent?.trim()
-  );
+    let title = await page.$eval('#itemTitle strong', (title) =>
+      title.textContent?.trim()
+    );
 
-  if (existingProduct) {
-    logger.warn(`Existing Product: ${sku}. Skipped | ${title}`);
-    return { sku };
-  }
+    if (existingProduct) {
+      logger.warn(`Existing Product: ${sku}. Skipped | ${title}`);
+      return { sku };
+    }
 
-  const description = await page.$eval(
-    '.descriptionDetail .floatLeft',
-    (description) => {
-      const newDescription = document.createElement('div');
-      const [_, __, ...nodes] = description.childNodes;
+    const description = await page.$eval(
+      '.descriptionDetail .floatLeft',
+      (description) => {
+        description.removeAttribute('class');
+        const text = description.textContent?.trim().replace(/\n/g, '\\n');
+        const html = description.outerHTML;
 
-      for (let node of nodes) {
-        newDescription.appendChild(node);
+        return { text, html };
       }
+    );
 
-      const text = newDescription.textContent?.trim().replace(/\n/g, '\\n');
-
-      return { text, html: newDescription.outerHTML };
+    if (!description.text) {
+      description.text = title;
     }
-  );
 
-  const imageData = await page.$$eval(
-    '#gallery .thumbnailLink',
-    (thumbnails, sku) =>
-      thumbnails.map((thumbnail, index) => {
-        const imgUrl = thumbnail
-          .getAttribute('data-image')
-          ?.replace('~lg', '~hqw') as string;
-
-        const lastDotIndex = imgUrl.lastIndexOf('.');
-        let extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
-
-        if (!['jpg', 'png'].includes(extension)) {
-          extension = 'png';
-        }
-
-        const imageName = `${sku}-${index}.${extension}`.toLowerCase();
-
-        return {
-          url: imgUrl as string,
-          imageName,
-          isFeatured: index === 0,
-        };
-      }),
-    sku
-  );
-
-  const images: string[] = [];
-  let featuredImage = '';
-
-  for (const data of imageData) {
-    const { url, imageName, isFeatured } = data;
-
-    await saveImage(url, imageName, './output/coastMusic/images');
-
-    if (isFeatured) {
-      featuredImage = imageName;
-    } else {
-      images.push(imageName);
+    if (!description.html) {
+      description.html = `<p>${title}</p>`;
     }
+
+    const imageData = await page.$$eval(
+      '#gallery .thumbnailLink',
+      (thumbnails, sku) =>
+        thumbnails.map((thumbnail, index) => {
+          const imgUrl = thumbnail
+            .getAttribute('data-image')
+            ?.replace('~lg', '~hqw') as string;
+
+          const lastDotIndex = imgUrl.lastIndexOf('.');
+          let extension = imgUrl.substring(lastDotIndex + 1).split('?')[0];
+
+          if (!['jpg', 'png'].includes(extension)) {
+            extension = 'png';
+          }
+
+          const imageName = `${sku}-${index}.${extension}`.toLowerCase();
+
+          return {
+            url: imgUrl as string,
+            imageName,
+            isFeatured: index === 0,
+          };
+        }),
+      sku
+    );
+
+    const images: string[] = [];
+    let featuredImage = '';
+
+    for (const data of imageData) {
+      const { url, imageName, isFeatured } = data;
+
+      await saveImage(url, imageName, './output/coastMusic/images');
+
+      if (isFeatured) {
+        featuredImage = imageName;
+      } else {
+        images.push(imageName);
+      }
+    }
+
+    if (!sku || !title || !description || !images || !featuredImage) {
+      return;
+    }
+
+    const minifiedHtmlDesc = minify(description.html, {
+      removeTagWhitespace: true,
+      collapseWhitespace: true,
+      collapseInlineTagWhitespace: true,
+    });
+
+    const product = new MProduct({
+      sku,
+      title,
+      descriptionText: description.text,
+      descriptionHtml: minifiedHtmlDesc,
+      images,
+      featuredImage,
+      supplier: SupplierEnum.COASTMUSIC,
+    });
+
+    await product.save();
+
+    logger.success(`New Product: ${sku} | ${title}`);
+  } catch (error) {
+    logger.error(error);
   }
-
-  if (!sku || !title || !description || !images || !featuredImage) {
-    return;
-  }
-
-  const minifiedHtmlDesc = minify(description.html, {
-    removeTagWhitespace: true,
-    collapseWhitespace: true,
-    collapseInlineTagWhitespace: true,
-  });
-
-  const product = new MProduct({
-    sku,
-    title,
-    descriptionText: description.text,
-    descriptionHtml: minifiedHtmlDesc,
-    images,
-    featuredImage,
-    supplier: SupplierEnum.COASTMUSIC,
-  });
-
-  await product.save();
-
-  logger.success(`New Product: ${sku} | ${title}`);
 
   await browser.close();
 }
