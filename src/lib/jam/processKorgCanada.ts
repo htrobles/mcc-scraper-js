@@ -8,8 +8,8 @@ import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
 import generateCsv from '../utils/generateCsv';
 
-export default async function processCoastMusic() {
-  const rawData = await parseCsv('./input/coastMusic.csv');
+export default async function processKorgCanada() {
+  const rawData = await parseCsv('./input/korgCanada.csv');
   const skus = rawData.map((row) => row[4]).slice(1);
 
   const browser = await puppeteer.launch({
@@ -26,14 +26,14 @@ export default async function processCoastMusic() {
 
   await browser.close();
 
-  const products = await getSupplierProductsOutput(SupplierEnum.COASTMUSIC);
+  const products = await getSupplierProductsOutput(SupplierEnum.KORGCANADA);
 
-  logger.success('Finished processing Coast Music website');
-  await generateCsv(products, 'coastMusic.csv', './output/coastMusic');
+  logger.success('Finished processing Korg Canada website');
+  await generateCsv(products, 'korgCanada.csv', './output/korgCanada');
 }
 
 export async function processProductUrl(productSku: string, page: Page) {
-  const productUrl = `https://coastmusiconline.com/Catalog/ProductDetail?itemId=${productSku}`;
+  const productUrl = `https://eriksonmusiconline.com/Catalog/ProductDetail?itemId=${productSku}`;
 
   const existingProduct = await MProduct.findOne({ sku: productSku });
 
@@ -56,20 +56,17 @@ export async function processProductUrl(productSku: string, page: Page) {
       return;
     }
 
-    let title = await page.$eval('#itemTitle strong', (title) =>
+    let title = await page.$eval('#itemTitle', (title) =>
       title.textContent?.trim()
     );
 
-    const description = await page.$eval(
-      '.descriptionDetail .floatLeft',
-      (description) => {
-        description.removeAttribute('class');
-        const text = description.textContent?.trim().replace(/\n/g, '\\n');
-        const html = description.outerHTML;
+    const description = await page.$eval('.colmd', (description) => {
+      description.removeAttribute('class');
+      const text = description.textContent?.trim().replace(/\n/g, '\\n');
+      const html = description.outerHTML;
 
-        return { text, html };
-      }
-    );
+      return { text, html };
+    });
 
     if (!description.text) {
       description.text = title;
@@ -111,7 +108,7 @@ export async function processProductUrl(productSku: string, page: Page) {
     for (const data of imageData) {
       const { url, imageName, isFeatured } = data;
 
-      await saveImage(url, imageName, './output/coastMusic/images');
+      await saveImage(url, imageName, './output/korgCanada/images');
 
       if (isFeatured) {
         featuredImage = imageName;
@@ -137,7 +134,7 @@ export async function processProductUrl(productSku: string, page: Page) {
       descriptionHtml: minifiedHtmlDesc,
       images,
       featuredImage,
-      supplier: SupplierEnum.COASTMUSIC,
+      supplier: SupplierEnum.KORGCANADA,
     });
 
     await product.save();

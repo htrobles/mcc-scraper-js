@@ -6,6 +6,7 @@ import { MProduct, SupplierEnum } from './models/Product';
 import config from './config';
 import processCoastMusic from './lib/jam/processCoastMusic';
 import promptSync from 'prompt-sync';
+import processKorgCanada from './lib/jam/processKorgCanada';
 
 const prompt = promptSync({ sigint: true });
 const supplierChoices = [
@@ -16,6 +17,10 @@ const supplierChoices = [
   {
     key: SupplierEnum.COASTMUSIC,
     label: 'Coast Music',
+  },
+  {
+    key: SupplierEnum.KORGCANADA,
+    label: 'Korg Canada',
   },
 ];
 
@@ -63,6 +68,9 @@ async function main() {
       break;
     case SupplierEnum.COASTMUSIC:
       await processCoastMusic();
+      break;
+    case SupplierEnum.KORGCANADA:
+      await processKorgCanada();
       break;
     default:
       break;

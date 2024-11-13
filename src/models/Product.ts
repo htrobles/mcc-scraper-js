@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 export enum SupplierEnum {
   ALLPARTS = 'AllParts',
   COASTMUSIC = 'CoastMusic',
+  KORGCANADA = 'KorgCanada',
 }
 
 export interface Product {
