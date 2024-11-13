@@ -42,7 +42,7 @@ async function main() {
 
   if (config.CLEAR_DB !== undefined && config.CLEAR_DB) {
     const confirmClearDb = prompt(
-      `Are you sure you want to clear database products for ${chosenSupplier.label}? (y/N)`
+      `Do you want to clear database products for ${chosenSupplier.label}? (y/N)`
     ).toLowerCase();
 
     if (['y', 'yes'].includes(confirmClearDb)) {

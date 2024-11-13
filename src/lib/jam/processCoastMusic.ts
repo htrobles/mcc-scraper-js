@@ -1,62 +1,27 @@
-import puppeteer from 'puppeteer';
-import { MProduct, SupplierEnum } from '../../models/Product';
-import logger from 'node-color-log';
-import saveImage from '../utils/saveImage';
+import puppeteer, { Browser, Page } from 'puppeteer';
+import parseCsv from '../utils/parseCsv';
 import config from '../../config';
-import generateCsv from '../utils/generateCsv';
-import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
+import logger from 'node-color-log';
+import { MProduct, SupplierEnum } from '../../models/Product';
+import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
+import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
+import generateCsv from '../utils/generateCsv';
 
 export default async function processCoastMusic() {
-  let hasNextPage = true;
+  const rawData = await parseCsv('./input/coastMusic.csv');
+  const skus = rawData.map((row) => row[4]).slice(1);
+
   const browser = await puppeteer.launch({
     headless: config.HEADLESS,
     protocolTimeout: 60000,
+    waitForInitialPage: true,
   });
+
   const page = await browser.newPage();
-  let pageNum = 1;
 
-  while (hasNextPage) {
-    const url = `${config.COAST_MUSIC_URL}#${pageNum}`;
-    await page.goto(url, {
-      waitUntil: ['domcontentloaded', 'load', 'networkidle0', 'networkidle2'],
-      timeout: 60000,
-    });
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const productUrls = await page.$$eval('a.catalogTileLink', (product) =>
-      product.map((a) => a.href)
-    );
-
-    logger.info(`Processing Page Number: ${pageNum} | ${url}`);
-
-    for (const productUrl of productUrls) {
-      try {
-        await processProductUrl(productUrl);
-      } catch (error) {
-        logger.error(`${productUrl}: ${error}`);
-      }
-    }
-
-    await incrementPage();
-  }
-
-  async function incrementPage() {
-    try {
-      const nextLink = await page.$eval(
-        'span.nextPage',
-        (nextLink) => !!nextLink
-      );
-
-      if (nextLink) {
-        pageNum += 1;
-      } else {
-        hasNextPage = false;
-      }
-    } catch (error) {
-      logger.info('NEXT LINK NOT FOUND');
-      hasNextPage = false;
-    }
+  for (let sku of skus) {
+    await processProductUrl(sku, page);
   }
 
   await browser.close();
@@ -67,15 +32,17 @@ export default async function processCoastMusic() {
   await generateCsv(products, 'coastMusic.csv', './output/coastMusic');
 }
 
-export async function processProductUrl(productUrl: string) {
-  const browser = await puppeteer.launch({
-    headless: config.HEADLESS,
-    protocolTimeout: 60000,
-  });
+export async function processProductUrl(productSku: string, page: Page) {
+  const productUrl = `https://coastmusiconline.com/Catalog/ProductDetail?itemId=${productSku}`;
 
-  const page = await browser.newPage();
+  const existingProduct = await MProduct.findOne({ sku: productSku });
 
-  await page.goto(productUrl, { timeout: 60000 });
+  if (existingProduct) {
+    logger.warn(`Existing Product: ${productSku}`);
+    return;
+  }
+
+  await page.goto(productUrl, { timeout: 60000, waitUntil: 'networkidle2' });
 
   try {
     const sku = await page.$eval('.catalogTileID', (catalogId) => {
@@ -86,20 +53,12 @@ export async function processProductUrl(productUrl: string) {
 
     if (!sku) {
       logger.error(`SKU not found. URL: ${productUrl}`);
-      await browser.close();
       return;
     }
-
-    const existingProduct = await MProduct.findOne({ sku: sku });
 
     let title = await page.$eval('#itemTitle strong', (title) =>
       title.textContent?.trim()
     );
-
-    if (existingProduct) {
-      logger.warn(`Existing Product: ${sku}. Skipped | ${title}`);
-      return { sku };
-    }
 
     const description = await page.$eval(
       '.descriptionDetail .floatLeft',
@@ -161,7 +120,7 @@ export async function processProductUrl(productUrl: string) {
       }
     }
 
-    if (!sku || !title || !description || !images || !featuredImage) {
+    if (!sku || !title || !description || !featuredImage) {
       return;
     }
 
@@ -185,8 +144,6 @@ export async function processProductUrl(productUrl: string) {
 
     logger.success(`New Product: ${sku} | ${title}`);
   } catch (error) {
-    logger.error(error);
+    logger.error(`${productUrl} | ${error}`);
   }
-
-  await browser.close();
 }
