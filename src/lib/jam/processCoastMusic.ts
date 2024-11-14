@@ -33,7 +33,7 @@ export default async function processCoastMusic() {
 }
 
 export async function processProductUrl(productSku: string, page: Page) {
-  const productUrl = `https://coastmusiconline.com/Catalog/ProductDetail?itemId=${productSku}`;
+  const productUrl = `${config.COAST_MUSIC_URL}=${productSku}`;
 
   const existingProduct = await MProduct.findOne({ sku: productSku });
 

@@ -9,6 +9,7 @@ const config = cleanEnv(process.env, {
   MONGODB_URI: str(),
   ALLPARTS_URL: str(),
   COAST_MUSIC_URL: str(),
+  KORG_CANADA_URL: str(),
 });
 
 export default config;

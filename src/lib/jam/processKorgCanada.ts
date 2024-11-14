@@ -33,7 +33,7 @@ export default async function processKorgCanada() {
 }
 
 export async function processProductUrl(productSku: string, page: Page) {
-  const productUrl = `https://eriksonmusiconline.com/Catalog/ProductDetail?itemId=${productSku}`;
+  const productUrl = `${config.KORG_CANADA_URL}?itemId=${productSku}`;
 
   const existingProduct = await MProduct.findOne({ sku: productSku });
 
