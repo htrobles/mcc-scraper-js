@@ -29,15 +29,18 @@ export default async function processCoastMusic() {
   const products = await getSupplierProductsOutput(SupplierEnum.COASTMUSIC);
 
   logger.success('Finished processing Coast Music website');
-  await generateCsv(products, 'coastMusic.csv', './output/coastMusic');
+  await generateCsv(
+    products,
+    'coastMusic.csv',
+    './output/coastMusic-scraper-output'
+  );
 }
 
 export async function processProductUrl(productSku: string, page: Page) {
   const productUrl = `${config.COAST_MUSIC_URL}=${productSku}`;
 
   const existingProduct = await MProduct.findOne({ sku: productSku });
-
-  if (existingProduct) {
+  if (!config.UPSERT_DATA && existingProduct) {
     logger.warn(`Existing Product: ${productSku}`);
     return;
   }
@@ -73,9 +76,6 @@ export async function processProductUrl(productSku: string, page: Page) {
 
     if (!description.text) {
       description.text = title;
-    }
-
-    if (!description.html) {
       description.html = `<p>${title}</p>`;
     }
 
@@ -130,19 +130,30 @@ export async function processProductUrl(productSku: string, page: Page) {
       collapseInlineTagWhitespace: true,
     });
 
-    const product = new MProduct({
-      sku,
-      title,
-      descriptionText: description.text,
-      descriptionHtml: minifiedHtmlDesc,
-      images,
-      featuredImage,
-      supplier: SupplierEnum.COASTMUSIC,
-    });
+    if (config.UPSERT_DATA && !!existingProduct) {
+      await MProduct.findByIdAndUpdate(existingProduct._id, {
+        sku,
+        title,
+        descriptionText: description.text,
+        descriptionHtml: minifiedHtmlDesc,
+        images,
+        featuredImage,
+        supplier: SupplierEnum.COASTMUSIC,
+      });
+    } else {
+      const product = new MProduct({
+        sku,
+        title,
+        descriptionText: description.text,
+        descriptionHtml: minifiedHtmlDesc,
+        images,
+        featuredImage,
+        supplier: SupplierEnum.COASTMUSIC,
+      });
 
-    await product.save();
-
-    logger.success(`New Product: ${sku} | ${title}`);
+      await product.save();
+      logger.success(`New Product: ${sku} | ${title}`);
+    }
   } catch (error) {
     logger.error(`${productUrl} | ${error}`);
   }

@@ -140,7 +140,7 @@ async function processProduct(
     title = [title, ...variantTree].join('-');
   }
 
-  if (existingProduct) {
+  if (!config.UPSERT_DATA && existingProduct) {
     logger.warn(`Existing Product: ${sku}. Skipped | ${title}`);
     return { sku };
   }
@@ -214,21 +214,32 @@ async function processProduct(
     return;
   }
 
-  const product = new MProduct({
-    sku,
-    title,
-    descriptionText: description.text,
-    descriptionHtml: description.html,
-    images,
-    featuredImage,
-    supplier: SupplierEnum.ALLPARTS,
-  });
+  if (config.UPSERT_DATA && !!existingProduct) {
+    await MProduct.findByIdAndUpdate(existingProduct._id, {
+      sku,
+      title,
+      descriptionText: description.text,
+      descriptionHtml: description.html,
+      images,
+      featuredImage,
+      supplier: SupplierEnum.ALLPARTS,
+    });
+  } else {
+    const product = new MProduct({
+      sku,
+      title,
+      descriptionText: description.text,
+      descriptionHtml: description.html,
+      images,
+      featuredImage,
+      supplier: SupplierEnum.ALLPARTS,
+    });
 
-  await product.save();
+    await product.save();
+    logger.success(`New Product: ${sku} | ${title}`);
 
-  logger.success(`New Product: ${sku} | ${title}`);
-
-  return product;
+    return product;
+  }
 }
 
 async function getNextCategoryUrl(page: Page) {

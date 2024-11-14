@@ -10,6 +10,7 @@ const config = cleanEnv(process.env, {
   ALLPARTS_URL: str(),
   COAST_MUSIC_URL: str(),
   KORG_CANADA_URL: str(),
+  UPSERT_DATA: bool({ default: false }),
 });
 
 export default config;

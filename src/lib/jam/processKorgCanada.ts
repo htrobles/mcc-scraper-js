@@ -29,15 +29,20 @@ export default async function processKorgCanada() {
   const products = await getSupplierProductsOutput(SupplierEnum.KORGCANADA);
 
   logger.success('Finished processing Korg Canada website');
-  await generateCsv(products, 'korgCanada.csv', './output/korgCanada');
+
+  await generateCsv(
+    products,
+    'korgCanada.csv',
+    './output/korgCanada-scraper-output'
+  );
 }
 
 export async function processProductUrl(productSku: string, page: Page) {
   const productUrl = `${config.KORG_CANADA_URL}?itemId=${productSku}`;
 
-  const existingProduct = await MProduct.findOne({ sku: productSku });
+  const existingProduct = await MProduct.findOne({ sku: productSku }).lean();
 
-  if (existingProduct) {
+  if (!config.UPSERT_DATA && existingProduct) {
     logger.warn(`Existing Product: ${productSku}`);
     return;
   }
@@ -70,9 +75,6 @@ export async function processProductUrl(productSku: string, page: Page) {
 
     if (!description.text) {
       description.text = title;
-    }
-
-    if (!description.html) {
       description.html = `<p>${title}</p>`;
     }
 
@@ -127,19 +129,30 @@ export async function processProductUrl(productSku: string, page: Page) {
       collapseInlineTagWhitespace: true,
     });
 
-    const product = new MProduct({
-      sku,
-      title,
-      descriptionText: description.text,
-      descriptionHtml: minifiedHtmlDesc,
-      images,
-      featuredImage,
-      supplier: SupplierEnum.KORGCANADA,
-    });
+    if (config.UPSERT_DATA && !!existingProduct) {
+      await MProduct.findByIdAndUpdate(existingProduct._id, {
+        sku,
+        title,
+        descriptionText: description.text,
+        descriptionHtml: minifiedHtmlDesc,
+        images,
+        featuredImage,
+        supplier: SupplierEnum.KORGCANADA,
+      });
+    } else {
+      const product = new MProduct({
+        sku,
+        title,
+        descriptionText: description.text,
+        descriptionHtml: minifiedHtmlDesc,
+        images,
+        featuredImage,
+        supplier: SupplierEnum.KORGCANADA,
+      });
 
-    await product.save();
-
-    logger.success(`New Product: ${sku} | ${title}`);
+      await product.save();
+      logger.success(`New Product: ${sku} | ${title}`);
+    }
   } catch (error) {
     logger.error(`${productUrl} | ${error}`);
   }
