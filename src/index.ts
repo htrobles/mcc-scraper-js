@@ -25,9 +25,9 @@ const supplierChoices = [
 ];
 
 async function main() {
-  console.log('Which supplier website should we scrape?');
+  logger.log('Which supplier website should we scrape?');
   supplierChoices.forEach(({ label }, index) => {
-    console.log(`${index + 1} : ${label}`);
+    logger.log(`${index + 1} : ${label}`);
   });
 
   const input = parseInt(prompt('Enter number of choice: '));
