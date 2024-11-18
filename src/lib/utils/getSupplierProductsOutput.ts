@@ -13,6 +13,7 @@ export default async function getSupplierProductsOutput(
       title,
       descriptionText,
       descriptionHtml,
+      missingDescription,
       images,
       featuredImage,
     }) => {
@@ -21,6 +22,7 @@ export default async function getSupplierProductsOutput(
         title,
         descriptionText,
         descriptionHtml,
+        missingDescription,
         featuredImage,
         image0: images[0],
       };

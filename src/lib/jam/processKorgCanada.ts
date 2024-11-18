@@ -32,8 +32,8 @@ export default async function processKorgCanada() {
 
   await generateCsv(
     products,
-    'korgCanada.csv',
-    './output/korgCanada-scraper-output'
+    'korgCanada-scraper-output.csv',
+    './output/korgCanada'
   );
 }
 

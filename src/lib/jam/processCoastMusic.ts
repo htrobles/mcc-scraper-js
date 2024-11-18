@@ -31,8 +31,8 @@ export default async function processCoastMusic() {
   logger.success('Finished processing Coast Music website');
   await generateCsv(
     products,
-    'coastMusic.csv',
-    './output/coastMusic-scraper-output'
+    'coastMusic-scraper-output.csv',
+    './output/coastMusic'
   );
 }
 
