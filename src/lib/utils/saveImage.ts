@@ -12,6 +12,12 @@ export default async function saveImage(
   outputDir: string
 ) {
   try {
+    const finalPath = `${outputDir}/${imageName}`;
+
+    if (fileExists(finalPath)) {
+      return logger.log(`Image already exists: ${imageName}`);
+    }
+
     fs.mkdirSync(outputDir, { recursive: true });
 
     const lastDotIndex = imageUrl.lastIndexOf('.');
@@ -44,7 +50,6 @@ export default async function saveImage(
         .toFile(`${outputDir}/${imageName}`);
     } else {
       const tempName = `temp-${imageName}`;
-      const finalPath = `${outputDir}/${imageName}`;
 
       const downloader = new Downloader({
         url: imageUrl,
@@ -80,5 +85,15 @@ export default async function saveImage(
     }
   } catch (error) {
     logger.error(error);
+  }
+}
+
+function fileExists(filePath: string) {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    return true;
+  } catch (err) {
+    return;
+    false;
   }
 }

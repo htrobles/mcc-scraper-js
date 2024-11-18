@@ -14,6 +14,7 @@ export interface Product {
   images: string[];
   featuredImage: string;
   supplier: SupplierEnum;
+  missingDescription: boolean;
 }
 
 const productSchema = new mongoose.Schema({
@@ -24,6 +25,7 @@ const productSchema = new mongoose.Schema({
   images: { required: true, type: [String] },
   featuredImage: { required: true, type: String },
   supplier: { required: true, type: String, enum: Object.values(SupplierEnum) },
+  missingDescription: { default: false, type: Boolean },
 });
 
 export const MProduct = mongoose.model('Product', productSchema);

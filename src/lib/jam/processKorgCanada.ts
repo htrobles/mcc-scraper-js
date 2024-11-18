@@ -73,9 +73,16 @@ export async function processProductUrl(productSku: string, page: Page) {
       return { text, html };
     });
 
+    let missingDescription = !description.text;
+
     if (!description.text) {
-      description.text = title;
-      description.html = `<p>${title}</p>`;
+      if (config.REPLACE_EMPTY_DESC_WITH_TITLE) {
+        description.text = title;
+        description.html = `<p>${title}</p>`;
+      } else {
+        logger.warn(`No description found: ${productSku}`);
+        return;
+      }
     }
 
     const imageData = await page.$$eval(
@@ -138,7 +145,10 @@ export async function processProductUrl(productSku: string, page: Page) {
         images,
         featuredImage,
         supplier: SupplierEnum.KORGCANADA,
+        missingDescription,
       });
+
+      logger.success(`Updated Product: ${sku} | ${title}`);
     } else {
       const product = new MProduct({
         sku,
@@ -148,6 +158,7 @@ export async function processProductUrl(productSku: string, page: Page) {
         images,
         featuredImage,
         supplier: SupplierEnum.KORGCANADA,
+        missingDescription,
       });
 
       await product.save();

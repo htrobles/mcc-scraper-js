@@ -7,11 +7,12 @@ export default async function generateCsv(
   outDir: string
 ) {
   const headers = [
-    { id: 'sku', title: 'Manufacturer SKU' },
+    { id: 'sku', title: 'Variant SKU' },
     { id: 'title', title: 'Title' },
     { id: 'descriptionText', title: 'Description Text' },
     { id: 'descriptionHtml', title: 'Body HTML' },
     { id: 'featuredImage', title: 'Featured Image' },
+    { id: 'missingDescription', title: 'Missing Descrption' },
     { id: 'image0', title: 'Image' },
     { id: 'image1', title: 'Image' },
     { id: 'image2', title: 'Image' },

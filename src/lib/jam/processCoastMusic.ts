@@ -40,6 +40,7 @@ export async function processProductUrl(productSku: string, page: Page) {
   const productUrl = `${config.COAST_MUSIC_URL}=${productSku}`;
 
   const existingProduct = await MProduct.findOne({ sku: productSku });
+
   if (!config.UPSERT_DATA && existingProduct) {
     logger.warn(`Existing Product: ${productSku}`);
     return;
@@ -74,9 +75,16 @@ export async function processProductUrl(productSku: string, page: Page) {
       }
     );
 
+    let missingDescription = !description.text;
+
     if (!description.text) {
-      description.text = title;
-      description.html = `<p>${title}</p>`;
+      if (config.REPLACE_EMPTY_DESC_WITH_TITLE) {
+        description.text = title;
+        description.html = `<p>${title}</p>`;
+      } else {
+        logger.warn(`No description found: ${productSku}`);
+        return;
+      }
     }
 
     const imageData = await page.$$eval(
@@ -139,7 +147,10 @@ export async function processProductUrl(productSku: string, page: Page) {
         images,
         featuredImage,
         supplier: SupplierEnum.COASTMUSIC,
+        missingDescription,
       });
+
+      logger.success(`Updated Product: ${sku} | ${title}`);
     } else {
       const product = new MProduct({
         sku,
@@ -149,6 +160,7 @@ export async function processProductUrl(productSku: string, page: Page) {
         images,
         featuredImage,
         supplier: SupplierEnum.COASTMUSIC,
+        missingDescription,
       });
 
       await product.save();

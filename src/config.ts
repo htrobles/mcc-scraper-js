@@ -11,6 +11,7 @@ const config = cleanEnv(process.env, {
   COAST_MUSIC_URL: str(),
   KORG_CANADA_URL: str(),
   UPSERT_DATA: bool({ default: false }),
+  REPLACE_EMPTY_DESC_WITH_TITLE: bool({ default: true }),
 });
 
 export default config;
