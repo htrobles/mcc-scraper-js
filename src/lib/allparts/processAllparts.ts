@@ -57,5 +57,9 @@ export default async function processAllparts() {
   );
 
   logger.success('Finished processing Allparts website');
-  await generateCsv(products, 'allparts.csv', './output/allparts');
+  await generateCsv(
+    products,
+    'allparts-scraper-output.csv',
+    './output/allparts'
+  );
 }

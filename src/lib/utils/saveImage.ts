@@ -12,6 +12,12 @@ export default async function saveImage(
   outputDir: string
 ) {
   try {
+    const finalPath = `${outputDir}/${imageName}`;
+
+    if (fileExists(finalPath)) {
+      return logger.log(`Image already exists: ${imageName}`);
+    }
+
     fs.mkdirSync(outputDir, { recursive: true });
 
     const lastDotIndex = imageUrl.lastIndexOf('.');
@@ -25,18 +31,69 @@ export default async function saveImage(
 
       const buffer = Buffer.from(response.data, 'binary');
 
-      await sharp(buffer).toFormat('png').toFile(`${outputDir}/${imageName}`);
+      const image = sharp(buffer);
+
+      const metadata = await image.metadata();
+
+      const width = metadata.width as number;
+      const height = metadata.height as number;
+
+      const length = Math.max(width, height);
+
+      await image
+        .resize({
+          width: length,
+          height: length,
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255 },
+        })
+        .toFile(`${outputDir}/${imageName}`);
     } else {
+      const tempName = `temp-${imageName}`;
+
       const downloader = new Downloader({
         url: imageUrl,
         directory: outputDir,
-        fileName: imageName,
+        fileName: tempName,
         cloneFiles: false,
       });
 
-      await downloader.download();
+      const image = await downloader.download();
+      const tempPath = image.filePath as string;
+
+      const metadata = await sharp(tempPath).metadata();
+
+      const width = metadata.width as number;
+      const height = metadata.height as number;
+
+      const length = Math.max(width, height);
+
+      await sharp(tempPath)
+        .resize({
+          width: length,
+          height: length,
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255 },
+        })
+        .toFile(finalPath);
+
+      fs.unlink(tempPath, (err) => {
+        if (err) {
+          throw new Error(JSON.stringify(err));
+        }
+      });
     }
   } catch (error) {
     logger.error(error);
+  }
+}
+
+function fileExists(filePath: string) {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    return true;
+  } catch (err) {
+    return;
+    false;
   }
 }
