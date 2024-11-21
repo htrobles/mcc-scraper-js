@@ -4,9 +4,11 @@ export enum SupplierEnum {
   ALLPARTS = 'AllParts',
   COASTMUSIC = 'CoastMusic',
   KORGCANADA = 'KorgCanada',
+  FENDER = 'Fender',
 }
 
 export interface Product {
+  systemId?: string;
   sku: string;
   title: string;
   descriptionText: string;
@@ -18,6 +20,7 @@ export interface Product {
 }
 
 const productSchema = new mongoose.Schema({
+  systemId: { type: String, unique: true },
   sku: { required: true, type: String, unique: true },
   title: { required: true, type: String },
   descriptionText: { required: true, type: String },

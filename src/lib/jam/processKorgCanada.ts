@@ -40,16 +40,16 @@ export default async function processKorgCanada() {
 export async function processProductUrl(productSku: string, page: Page) {
   const productUrl = `${config.KORG_CANADA_URL}?itemId=${productSku}`;
 
-  const existingProduct = await MProduct.findOne({ sku: productSku }).lean();
-
-  if (!config.UPSERT_DATA && existingProduct) {
-    logger.warn(`Existing Product: ${productSku}`);
-    return;
-  }
-
-  await page.goto(productUrl, { timeout: 60000, waitUntil: 'networkidle2' });
-
   try {
+    const existingProduct = await MProduct.findOne({ sku: productSku }).lean();
+
+    if (!config.UPSERT_DATA && existingProduct) {
+      logger.warn(`Existing Product: ${productSku}`);
+      return;
+    }
+
+    await page.goto(productUrl, { timeout: 60000, waitUntil: 'networkidle2' });
+
     const sku = await page.$eval('.catalogTileID', (catalogId) => {
       const sku = catalogId.textContent?.split(':')[1].trim();
 
@@ -100,7 +100,7 @@ export async function processProductUrl(productSku: string, page: Page) {
             extension = 'png';
           }
 
-          const imageName = `${sku}-${index}.${extension}`.toLowerCase();
+          const imageName = `${sku}-${index}.jpg`.toLowerCase();
 
           return {
             url: imgUrl as string,

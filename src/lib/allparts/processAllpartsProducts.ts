@@ -182,7 +182,7 @@ async function processProduct(
           extension = 'png';
         }
 
-        const imageName = `${sku}-${index}.${extension}`.toLowerCase();
+        const imageName = `${sku}-${index}.jpg`.toLowerCase();
 
         images.push(imageName);
 

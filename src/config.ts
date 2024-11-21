@@ -12,6 +12,10 @@ const config = cleanEnv(process.env, {
   KORG_CANADA_URL: str(),
   UPSERT_DATA: bool({ default: false }),
   REPLACE_EMPTY_DESC_WITH_TITLE: bool({ default: true }),
+  FENDER_LOGIN_URL: str(),
+  FENDER_PRODUCT_URL: str(),
+  FENDER_USERNAME: str(),
+  FENDER_PASSWORD: str(),
 });
 
 export default config;

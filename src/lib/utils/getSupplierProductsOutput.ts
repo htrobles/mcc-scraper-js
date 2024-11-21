@@ -9,6 +9,7 @@ export default async function getSupplierProductsOutput(
     }).lean()
   ).map(
     ({
+      systemId,
       sku,
       title,
       descriptionText,
@@ -18,6 +19,7 @@ export default async function getSupplierProductsOutput(
       featuredImage,
     }) => {
       const product: { [key: string]: any } = {
+        systemId,
         sku,
         title,
         descriptionText,
@@ -25,6 +27,8 @@ export default async function getSupplierProductsOutput(
         missingDescription,
         featuredImage,
         image0: images[0],
+        addTags: 'add, instock',
+        replaceTags: 'Yes',
       };
 
       images.forEach((imageName, index) => {
