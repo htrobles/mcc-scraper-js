@@ -7,12 +7,15 @@ export default async function generateCsv(
   outDir: string
 ) {
   const headers = [
+    { id: 'systemId', title: 'System ID' },
     { id: 'sku', title: 'Variant SKU' },
     { id: 'title', title: 'Title' },
     { id: 'descriptionText', title: 'Description Text' },
     { id: 'descriptionHtml', title: 'Body HTML' },
-    { id: 'featuredImage', title: 'Featured Image' },
     { id: 'missingDescription', title: 'Missing Descrption' },
+    { id: 'addTags', title: 'Add Tags' },
+    { id: 'replaceTags', title: 'Replace Tags' },
+    { id: 'featuredImage', title: 'Featured Image' },
     { id: 'image0', title: 'Image' },
     { id: 'image1', title: 'Image' },
     { id: 'image2', title: 'Image' },
@@ -40,10 +43,14 @@ export default async function generateCsv(
     header: headers,
   });
 
-  const rows = [];
+  const rows = products.map((product) => ({
+    ...product,
+    addTags: 'add, instock',
+    replaceTags: 'Yes',
+  }));
 
   csvWriter
-    .writeRecords(products)
+    .writeRecords(rows)
     .then(() => logger.success('CSV file created successfully'))
     .catch((err) => logger.error(err));
 }

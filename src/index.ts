@@ -7,6 +7,7 @@ import config from './config';
 import processCoastMusic from './lib/jam/processCoastMusic';
 import promptSync from 'prompt-sync';
 import processKorgCanada from './lib/jam/processKorgCanada';
+import processFender from './lib/fender/processFender';
 
 const prompt = promptSync({ sigint: true });
 const supplierChoices = [
@@ -21,6 +22,10 @@ const supplierChoices = [
   {
     key: SupplierEnum.KORGCANADA,
     label: 'Korg Canada',
+  },
+  {
+    key: SupplierEnum.FENDER,
+    label: 'Fender',
   },
 ];
 
@@ -71,6 +76,9 @@ async function main() {
       break;
     case SupplierEnum.KORGCANADA:
       await processKorgCanada();
+      break;
+    case SupplierEnum.FENDER:
+      await processFender();
       break;
     default:
       break;

@@ -47,6 +47,8 @@ export default async function saveImage(
           fit: 'contain',
           background: { r: 255, g: 255, b: 255 },
         })
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .toFormat('jpg')
         .toFile(`${outputDir}/${imageName}`);
     } else {
       const tempName = `temp-${imageName}`;
@@ -75,6 +77,8 @@ export default async function saveImage(
           fit: 'contain',
           background: { r: 255, g: 255, b: 255 },
         })
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .toFormat('jpg')
         .toFile(finalPath);
 
       fs.unlink(tempPath, (err) => {
