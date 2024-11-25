@@ -8,6 +8,7 @@ import processCoastMusic from './lib/jam/processCoastMusic';
 import promptSync from 'prompt-sync';
 import processKorgCanada from './lib/jam/processKorgCanada';
 import processFender from './lib/fender/processFender';
+import processDaddario from './lib/daddario/processDaddario';
 
 const prompt = promptSync({ sigint: true });
 const supplierChoices = [
@@ -26,6 +27,10 @@ const supplierChoices = [
   {
     key: SupplierEnum.FENDER,
     label: 'Fender',
+  },
+  {
+    key: SupplierEnum.DADDARIO,
+    label: "D'addario",
   },
 ];
 
@@ -58,12 +63,8 @@ async function main() {
     if (['y', 'yes'].includes(confirmClearDb)) {
       logger.warn('CLEARING DATABASE');
       await MProduct.deleteMany({ supplier: supplierKey });
-    } else if (['n', 'no'].includes(confirmClearDb)) {
-      logger.info('Proceeding without clearing Database');
     } else {
-      logger.error('Invalid choice');
-      await mongoose.connection.close();
-      return;
+      logger.info('Proceeding without clearing Database');
     }
   }
 
@@ -79,6 +80,9 @@ async function main() {
       break;
     case SupplierEnum.FENDER:
       await processFender();
+      break;
+    case SupplierEnum.DADDARIO:
+      await processDaddario();
       break;
     default:
       break;

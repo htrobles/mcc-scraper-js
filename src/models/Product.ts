@@ -5,6 +5,7 @@ export enum SupplierEnum {
   COASTMUSIC = 'CoastMusic',
   KORGCANADA = 'KorgCanada',
   FENDER = 'Fender',
+  DADDARIO = 'Daddario',
 }
 
 export interface Product {
