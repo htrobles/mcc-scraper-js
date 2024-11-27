@@ -16,6 +16,10 @@ const config = cleanEnv(process.env, {
   FENDER_PRODUCT_URL: str(),
   FENDER_USERNAME: str(),
   FENDER_PASSWORD: str(),
+  DADDARIO_LOGIN_URL: str(),
+  DADDARIO_PRODUCT_URL: str(),
+  DADDARIO_USERNAME: str(),
+  DADDARIO_PASSWORD: str(),
 });
 
 export default config;
