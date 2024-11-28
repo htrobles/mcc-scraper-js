@@ -25,7 +25,7 @@ export default async function processTomLeeMusic() {
     links.map((link) => link.href)
   );
 
-  for (let typeUrl of [typeUrls[9]]) {
+  for (let typeUrl of typeUrls) {
     await processTypeUrl(typeUrl, page);
   }
 
@@ -58,7 +58,7 @@ async function processTypeUrl(typeUrl: string, page: Page) {
       await page.waitForNavigation({ waitUntil: 'networkidle2' });
     } catch (error) {
       hasNext = false;
-      logger.info('Next page not found');
+      logger.log('Next page not found');
     }
   }
 }
@@ -69,8 +69,6 @@ async function processProduct(productUrl: string, page: Page) {
   const title = await page.$eval('.page-title', (title) =>
     title.textContent?.trim()
   );
-
-  logger.info(title);
 
   const sku = await page.$eval(
     '.product-info-main ul li',
@@ -84,27 +82,13 @@ async function processProduct(productUrl: string, page: Page) {
 
   price = parser(price as string);
 
-  const productExists = !!(await MProductPricing.countDocuments({
-    sku,
-    store: StoreEnum.TOMLEEMUSIC,
-  }));
+  const pricing = await MProductPricing.findOneAndUpdate(
+    { sku },
+    { sku, title, theirPrice: price, store: StoreEnum.TOMLEEMUSIC },
+    { upsert: true, new: true }
+  );
 
-  if (productExists) {
-    logger.warn(`Existing Product found: ${sku}`);
-    await MProductPricing.findOneAndUpdate(
-      { sku },
-      { title, theirPrice: price }
-    );
-  } else {
-    const productPricing = new MProductPricing({
-      sku,
-      title,
-      theirPrice: price,
-      store: StoreEnum.TOMLEEMUSIC,
-    });
-
-    await productPricing.save();
-  }
+  logger.success(`Data Updated: ${pricing.sku}, ${pricing.title}`);
 }
 
 async function generatePriceComparison() {
