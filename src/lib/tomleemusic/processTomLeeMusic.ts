@@ -11,63 +11,62 @@ const parser = NumberParser('en-US', { style: 'currency', currency: 'USD' });
 const PAGE_SIZE = 1;
 
 export default async function processTomLeeMusic() {
+  const browser = await puppeteer.launch({
+    headless: config.HEADLESS,
+    protocolTimeout: 60000,
+    waitForInitialPage: true,
+  });
+
+  const page = await browser.newPage();
+
+  await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle0' });
+
+  const typeUrls = await page.$$eval('.col-sm-6 p a', (links) =>
+    links.map((link) => link.href)
+  );
+
+  for (let typeUrl of typeUrls) {
+    await processTypeUrl(typeUrl, page);
+  }
+
+  await browser.close();
+
+  await generatePriceComparison();
   try {
-    const browser = await puppeteer.launch({
-      headless: config.HEADLESS,
-      protocolTimeout: 60000,
-      waitForInitialPage: true,
-    });
-
-    const page = await browser.newPage();
-
-    await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle0' });
-
-    const typeUrls = await page.$$eval('.col-sm-6 p a', (links) =>
-      links.map((link) => link.href)
-    );
-
-    for (let typeUrl of typeUrls) {
-      await processTypeUrl(typeUrl, page);
-    }
-
-    await browser.close();
-
-    await generatePriceComparison();
   } catch (error) {
     logger.error(error);
   }
 }
 
 async function processTypeUrl(typeUrl: string, page: Page) {
-  try {
-    await page.goto(typeUrl, { waitUntil: 'networkidle2' });
-    let hasNext = true;
+  let nextPageUrl: string | null = typeUrl;
 
-    while (hasNext) {
-      const productUrls = await page.$$eval(
-        '.product-item .product-item-info .product-item-details a.product-item-link',
-        (items) => items.map((link) => link.href)
+  while (!!nextPageUrl) {
+    console.log(nextPageUrl);
+    await page.goto(nextPageUrl, { waitUntil: 'networkidle2' });
+
+    try {
+      nextPageUrl = await page.$eval(
+        '.pages a.action.next',
+        (nextLink) => nextLink.href
       );
-
-      for (let productUrl of productUrls) {
-        await processProduct(productUrl, page);
-      }
-
-      try {
-        const nextPageBtn = await page.$eval(
-          '.pages-item-next a',
-          (nextLink) => nextLink
-        );
-
-        nextPageBtn.click();
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
-      } catch (error) {
-        hasNext = false;
-        logger.log('Next page not found');
-      }
+    } catch (error) {
+      nextPageUrl = null;
+      logger.log('Next page not found');
     }
+
+    const productUrls = await page.$$eval(
+      '.product-item .product-item-info .product-item-details a.product-item-link',
+      (items) => items.map((link) => link.href)
+    );
+
+    for (let productUrl of productUrls) {
+      await processProduct(productUrl, page);
+    }
+  }
+  try {
   } catch (error) {
-    logger.error(error);
+    logger.error(`Type Page Error: ${typeUrl}`);
   }
 }
 
@@ -84,10 +83,19 @@ async function processProduct(productUrl: string, page: Page) {
       (line) => line.textContent?.replace('Catalog #: ', '').trim() || ''
     );
 
-    let price: string | number | null = await page.$eval(
-      '.special-price span.price',
-      (price) => price.textContent
-    );
+    let price: string | number | null;
+
+    try {
+      price = await page.$eval(
+        '.special-price span.price',
+        (price) => price.textContent
+      );
+    } catch (error) {
+      price = await page.$eval(
+        '.price-container .price',
+        (price) => price.textContent
+      );
+    }
 
     price = parser(price as string);
 
@@ -99,7 +107,7 @@ async function processProduct(productUrl: string, page: Page) {
 
     logger.success(`Data Updated: ${pricing.sku}, ${pricing.title}`);
   } catch (error) {
-    logger.error(error);
+    logger.error(`Product Page Error: ${productUrl}`);
   }
 }
 
