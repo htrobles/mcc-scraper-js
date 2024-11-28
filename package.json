@@ -23,6 +23,7 @@
     "dotenv": "^16.4.5",
     "envalid": "^8.0.0",
     "html-minifier": "^4.0.0",
+    "intl-number-parser": "^1.0.5",
     "mongodb": "^6.10.0",
     "mongoose": "^8.7.3",
     "node-color-log": "^12.0.1",

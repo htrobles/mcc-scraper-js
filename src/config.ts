@@ -20,6 +20,7 @@ const config = cleanEnv(process.env, {
   DADDARIO_PRODUCT_URL: str(),
   DADDARIO_USERNAME: str(),
   DADDARIO_PASSWORD: str(),
+  TOM_LEE_MUSIC_URL: str(),
 });
 
 export default config;
