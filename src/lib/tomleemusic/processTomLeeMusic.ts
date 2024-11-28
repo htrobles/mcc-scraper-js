@@ -11,84 +11,96 @@ const parser = NumberParser('en-US', { style: 'currency', currency: 'USD' });
 const PAGE_SIZE = 1;
 
 export default async function processTomLeeMusic() {
-  const browser = await puppeteer.launch({
-    headless: config.HEADLESS,
-    protocolTimeout: 60000,
-    waitForInitialPage: true,
-  });
+  try {
+    const browser = await puppeteer.launch({
+      headless: config.HEADLESS,
+      protocolTimeout: 60000,
+      waitForInitialPage: true,
+    });
 
-  const page = await browser.newPage();
+    const page = await browser.newPage();
 
-  await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle0' });
+    await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle0' });
 
-  const typeUrls = await page.$$eval('.col-sm-6 p a', (links) =>
-    links.map((link) => link.href)
-  );
+    const typeUrls = await page.$$eval('.col-sm-6 p a', (links) =>
+      links.map((link) => link.href)
+    );
 
-  for (let typeUrl of typeUrls) {
-    await processTypeUrl(typeUrl, page);
+    for (let typeUrl of typeUrls) {
+      await processTypeUrl(typeUrl, page);
+    }
+
+    await browser.close();
+
+    await generatePriceComparison();
+  } catch (error) {
+    logger.error(error);
   }
-
-  await browser.close();
-
-  await generatePriceComparison();
 }
 
 async function processTypeUrl(typeUrl: string, page: Page) {
-  await page.goto(typeUrl, { waitUntil: 'networkidle2' });
-  let hasNext = true;
+  try {
+    await page.goto(typeUrl, { waitUntil: 'networkidle2' });
+    let hasNext = true;
 
-  while (hasNext) {
-    const productUrls = await page.$$eval(
-      '.product-item .product-item-info .product-item-details a.product-item-link',
-      (items) => items.map((link) => link.href)
-    );
-
-    for (let productUrl of productUrls) {
-      await processProduct(productUrl, page);
-    }
-
-    try {
-      const nextPageBtn = await page.$eval(
-        '.pages-item-next a',
-        (nextLink) => nextLink
+    while (hasNext) {
+      const productUrls = await page.$$eval(
+        '.product-item .product-item-info .product-item-details a.product-item-link',
+        (items) => items.map((link) => link.href)
       );
 
-      nextPageBtn.click();
-      await page.waitForNavigation({ waitUntil: 'networkidle2' });
-    } catch (error) {
-      hasNext = false;
-      logger.log('Next page not found');
+      for (let productUrl of productUrls) {
+        await processProduct(productUrl, page);
+      }
+
+      try {
+        const nextPageBtn = await page.$eval(
+          '.pages-item-next a',
+          (nextLink) => nextLink
+        );
+
+        nextPageBtn.click();
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+      } catch (error) {
+        hasNext = false;
+        logger.log('Next page not found');
+      }
     }
+  } catch (error) {
+    logger.error(error);
   }
 }
 
 async function processProduct(productUrl: string, page: Page) {
-  await page.goto(productUrl, { waitUntil: 'networkidle2' });
+  try {
+    await page.goto(productUrl, { waitUntil: 'networkidle2' });
 
-  const title = await page.$eval('.page-title', (title) =>
-    title.textContent?.trim()
-  );
+    const title = await page.$eval('.page-title', (title) =>
+      title.textContent?.trim()
+    );
 
-  const sku = await page.$eval(
-    '.product-info-main ul li',
-    (line) => line.textContent?.replace('Catalog #: ', '').trim() || ''
-  );
+    const sku = await page.$eval(
+      '.product-info-main ul li',
+      (line) => line.textContent?.replace('Catalog #: ', '').trim() || ''
+    );
 
-  let price: string | number | null = await page.$eval(
-    '.special-price span.price',
-    (price) => price.textContent
-  );
+    let price: string | number | null = await page.$eval(
+      '.special-price span.price',
+      (price) => price.textContent
+    );
 
-  price = parser(price as string);
+    price = parser(price as string);
 
-  const pricing = await MProductPricing.findOneAndUpdate(
-    { sku },
-    { sku, title, theirPrice: price, store: StoreEnum.TOMLEEMUSIC },
-    { upsert: true, new: true }
-  );
+    const pricing = await MProductPricing.findOneAndUpdate(
+      { sku },
+      { sku, title, theirPrice: price, store: StoreEnum.TOMLEEMUSIC },
+      { upsert: true, new: true }
+    );
 
-  logger.success(`Data Updated: ${pricing.sku}, ${pricing.title}`);
+    logger.success(`Data Updated: ${pricing.sku}, ${pricing.title}`);
+  } catch (error) {
+    logger.error(error);
+  }
 }
 
 async function generatePriceComparison() {
