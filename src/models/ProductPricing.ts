@@ -2,10 +2,7 @@ import mongoose from 'mongoose';
 
 export enum StoreEnum {
   TOMLEEMUSIC = 'TomLeeMusic',
-  //   COASTMUSIC = 'CoastMusic',
-  //   KORGCANADA = 'KorgCanada',
-  //   FENDER = 'Fender',
-  //   DADDARIO = 'Daddario',
+  ACCLAIMMUSIC = 'AcclaimMusic',
 }
 
 export interface ProductPricing {

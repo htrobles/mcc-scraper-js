@@ -9,9 +9,10 @@ import promptSync from 'prompt-sync';
 import processKorgCanada from './jam/processKorgCanada';
 import processFender from './fender/processFender';
 import processDaddario from './daddario/processDaddario';
-import { storeChoices, supplierChoices } from '../constants/propmpts';
+import { storeChoices, supplierChoices } from '../constants/prompts';
 import { StoreEnum } from '../models/ProductPricing';
 import processTomLeeMusic from './tomleemusic/processTomLeeMusic';
+import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
 
 const prompt = promptSync({ sigint: true });
 
@@ -88,6 +89,9 @@ export async function compareProductPricing() {
   switch (storeKey) {
     case StoreEnum.TOMLEEMUSIC:
       await processTomLeeMusic();
+      break;
+    case StoreEnum.ACCLAIMMUSIC:
+      await processAcclaimMusic();
       break;
 
     default:
