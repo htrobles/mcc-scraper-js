@@ -35,4 +35,8 @@ export const storeChoices = [
     key: StoreEnum.TOMLEEMUSIC,
     label: 'Tom Lee Music',
   },
+  {
+    key: StoreEnum.ACCLAIMMUSIC,
+    label: 'Acclaim Music',
+  },
 ];

@@ -1,6 +1,6 @@
 import logger from 'node-color-log';
 import promptSync from 'prompt-sync';
-import { typeChoices } from './constants/propmpts';
+import { typeChoices } from './constants/prompts';
 
 const prompt = promptSync({ sigint: true });
 
