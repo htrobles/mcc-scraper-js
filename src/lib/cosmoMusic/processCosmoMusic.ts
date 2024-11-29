@@ -9,65 +9,64 @@ import { generatePriceComparisonCsv } from '../utils/generatePricingCsv';
 const parser = NumberParser('en-US', { style: 'currency', currency: 'USD' });
 
 export default async function processCosmoMusic() {
-  const browser = await puppeteer.launch({
-    headless: config.HEADLESS,
-    protocolTimeout: 60000,
-    waitForInitialPage: true,
-  });
-
-  const page = await browser.newPage();
-
   let currentPage: number | null = 1;
 
-  while (!!currentPage) {
-    let nextPageUrl = `${config.COSMO_MUSIC_URL}?page=${currentPage}`;
-    logger.log(nextPageUrl);
-
-    await page.goto(nextPageUrl, {
-      waitUntil: 'networkidle2',
+  try {
+    const browser = await puppeteer.launch({
+      headless: config.HEADLESS,
+      protocolTimeout: 60000,
+      waitForInitialPage: true,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const page = await browser.newPage();
 
-    try {
-      const isEnd = await page.$eval(
-        '.vtex-search-result-3-x-searchNotFoundOops',
-        (el) => el.textContent
+    while (!!currentPage) {
+      let nextPageUrl = `${config.COSMO_MUSIC_URL}?page=${currentPage}`;
+      logger.log(nextPageUrl);
+
+      await page.goto(nextPageUrl, {
+        waitUntil: 'networkidle2',
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      try {
+        const isEnd = await page.$eval(
+          '.vtex-search-result-3-x-searchNotFoundOops',
+          (el) => el.textContent
+        );
+
+        if (isEnd) {
+          currentPage = null;
+          continue;
+        }
+      } catch (error) {
+        if (currentPage) {
+          currentPage++;
+        }
+      }
+
+      await autoScroll(page);
+
+      const productUrls = await page.$$eval(
+        'a.vtex-product-summary-2-x-clearLink',
+        (items) => items.map((link) => link.href)
       );
 
-      if (isEnd) {
-        currentPage = null;
-        continue;
+      for (let productUrl of productUrls) {
+        await processProduct(productUrl, page);
       }
-    } catch (error) {
-      if (currentPage) {
-        currentPage++;
+
+      if (productUrls.length < 36) {
+        logger.error('Incomplete products');
+        logger.warn(nextPageUrl);
+        console.log(productUrls);
       }
     }
 
-    await autoScroll(page);
+    await browser.close();
 
-    const productUrls = await page.$$eval(
-      'a.vtex-product-summary-2-x-clearLink',
-      (items) => items.map((link) => link.href)
-    );
-
-    for (let productUrl of productUrls) {
-      await processProduct(productUrl, page);
-    }
-
-    if (productUrls.length < 36) {
-      logger.error('Incomplete products');
-      logger.warn(nextPageUrl);
-      console.log(productUrls);
-    }
-  }
-
-  await browser.close();
-
-  await generatePriceComparisonCsv(StoreEnum.COSMOMUSIC);
-
-  try {
+    await generatePriceComparisonCsv(StoreEnum.COSMOMUSIC);
   } catch (error) {
     logger.error(
       `Type Page Error: ${config.COSMO_MUSIC_URL}?page=${currentPage}`
