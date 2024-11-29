@@ -30,13 +30,26 @@ export const supplierChoices = [
   },
 ];
 
-export const storeChoices = [
+export interface StoreChoice {
+  key: StoreEnum;
+  label: string;
+  fileOutputName: string;
+}
+
+export const storeChoices: StoreChoice[] = [
   {
     key: StoreEnum.TOMLEEMUSIC,
     label: 'Tom Lee Music',
+    fileOutputName: 'tom-lee-music',
   },
   {
     key: StoreEnum.ACCLAIMMUSIC,
     label: 'Acclaim Music',
+    fileOutputName: 'acclaim-music',
+  },
+  {
+    key: StoreEnum.COSMOMUSIC,
+    label: 'Cosmo Music',
+    fileOutputName: 'cosmo-music',
   },
 ];

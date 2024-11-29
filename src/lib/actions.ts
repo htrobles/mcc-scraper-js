@@ -13,6 +13,7 @@ import { storeChoices, supplierChoices } from '../constants/prompts';
 import { StoreEnum } from '../models/ProductPricing';
 import processTomLeeMusic from './tomleemusic/processTomLeeMusic';
 import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
+import processCosmoMusic from './cosmoMusic/processCosmoMusic';
 
 const prompt = promptSync({ sigint: true });
 
@@ -92,6 +93,9 @@ export async function compareProductPricing() {
       break;
     case StoreEnum.ACCLAIMMUSIC:
       await processAcclaimMusic();
+      break;
+    case StoreEnum.COSMOMUSIC:
+      await processCosmoMusic();
       break;
 
     default:
