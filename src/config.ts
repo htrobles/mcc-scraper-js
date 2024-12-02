@@ -22,6 +22,7 @@ const config = cleanEnv(process.env, {
   DADDARIO_PASSWORD: str(),
   TOM_LEE_MUSIC_URL: str(),
   ACCLAIM_MUSIC_URL: str(),
+  COSMO_MUSIC_URL: str(),
 });
 
 export default config;
