@@ -86,7 +86,7 @@ async function processProduct(productUrl: string, page: Page) {
 
     const sku = await page.$eval(
       '.cosmo-store-theme-8-x-container_info',
-      (sku) => sku.textContent?.replace('SKU: ', '').trim()
+      (sku) => sku.textContent?.split('|')[1].replace('Model: ', '').trim()
     );
 
     let theirPrice: string | number | null = await page.$eval(
