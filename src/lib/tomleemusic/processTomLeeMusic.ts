@@ -19,7 +19,7 @@ export default async function processTomLeeMusic() {
 
   const page = await browser.newPage();
 
-  await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle0' });
+  await page.goto(config.TOM_LEE_MUSIC_URL, { waitUntil: 'networkidle2' });
 
   const typeUrls = await page.$$eval('.col-sm-6 p a', (links) =>
     links.map((link) => link.href)

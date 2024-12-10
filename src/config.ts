@@ -23,6 +23,7 @@ const config = cleanEnv(process.env, {
   TOM_LEE_MUSIC_URL: str(),
   ACCLAIM_MUSIC_URL: str(),
   COSMO_MUSIC_URL: str(),
+  LM_URL: str(),
 });
 
 export default config;

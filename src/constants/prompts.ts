@@ -28,6 +28,10 @@ export const supplierChoices = [
     key: SupplierEnum.DADDARIO,
     label: "D'addario",
   },
+  {
+    key: SupplierEnum.LM,
+    label: 'L.M.',
+  },
 ];
 
 export interface StoreChoice {

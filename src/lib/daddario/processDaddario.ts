@@ -24,7 +24,7 @@ export default async function processDaddario() {
 
   const page = await browser.newPage();
 
-  await page.goto(config.DADDARIO_LOGIN_URL, { waitUntil: 'networkidle0' });
+  await page.goto(config.DADDARIO_LOGIN_URL, { waitUntil: 'networkidle2' });
 
   await page.type('#uname', config.DADDARIO_USERNAME);
   await page.type('#pwd', config.DADDARIO_PASSWORD);
@@ -32,7 +32,7 @@ export default async function processDaddario() {
   await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
 
   await page.keyboard.press('Enter');
-  await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
   for (let { sku, systemId } of rawProducts) {
     await processProductUrl(sku, systemId, page);
