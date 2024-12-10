@@ -163,7 +163,9 @@ export async function processProductUrl(productUrl: string, page: Page) {
       (elements, sku) =>
         elements.map((el, index) => {
           return {
-            imageName: `${sku?.replace('/', '-')}-${index}.jpg`,
+            imageName: `${sku
+              ?.replace('/', '-')
+              .replace('/', '-')}-${index}.jpg`,
             isFeatured: index === 0,
             url: el.getAttribute('data-src'),
           };
