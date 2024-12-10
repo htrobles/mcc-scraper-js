@@ -11,7 +11,7 @@ import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import NumberParser from 'intl-number-parser';
 import { MRawProduct } from '../../models/RawProduct';
-import { MProductPricing } from '../../models/ProductPricing';
+import processWithRetry from '../utils/processUrl';
 
 const parser = NumberParser('en-US', { style: 'decimal' });
 
@@ -37,7 +37,7 @@ export default async function processLM() {
   );
 
   for (let depUrl of depUrls) {
-    await processDepUrl(depUrl, page);
+    await processWithRetry(() => processDepUrl(depUrl, page));
   }
 
   await browser.close();
@@ -66,44 +66,46 @@ async function processDepUrl(depUrl: string, page: Page) {
     const nextUrl =
       depUrl + `?LocationsID=57&Current=${skipCount}&#top-pagination`;
 
-    await page.goto(nextUrl, { waitUntil: 'networkidle2' });
+    await processWithRetry(async () => {
+      await page.goto(nextUrl, { waitUntil: 'networkidle2' });
 
-    const products = await page.$$eval('.products-item', (items) =>
-      items.map((item) => {
-        const url = item
-          .querySelector('a.products-item-link')
-          ?.getAttribute('href');
-        const sku = item
-          .querySelector(
-            '.products-item-descr .maxh-90.mt-1 p.mb-0.text-dark.fs-7'
-          )
-          ?.textContent?.split(':')[1]
-          .trim();
+      const products = await page.$$eval('.products-item', (items) =>
+        items.map((item) => {
+          const url = item
+            .querySelector('a.products-item-link')
+            ?.getAttribute('href');
+          const sku = item
+            .querySelector(
+              '.products-item-descr .maxh-90.mt-1 p.mb-0.text-dark.fs-7'
+            )
+            ?.textContent?.split(':')[1]
+            .trim();
 
-        return { url, sku };
-      })
-    );
+          return { url, sku };
+        })
+      );
 
-    const productSkus = products.map(({ sku }) => sku);
+      const productSkus = products.map(({ sku }) => sku);
 
-    const lightspeedProducts = await MRawProduct.find({
-      sku: { $in: productSkus },
-    }).lean();
+      const lightspeedProducts = await MRawProduct.find({
+        sku: { $in: productSkus },
+      }).lean();
 
-    const productUrls = lightspeedProducts.reduce((prev, product) => {
-      const { sku } = product;
-      const exisitngProduct = products.find((p) => p.sku === sku);
+      const productUrls = lightspeedProducts.reduce((prev, product) => {
+        const { sku } = product;
+        const exisitngProduct = products.find((p) => p.sku === sku);
 
-      if (!exisitngProduct) {
-        return prev;
-      } else {
-        return [...prev, exisitngProduct.url as string];
+        if (!exisitngProduct) {
+          return prev;
+        } else {
+          return [...prev, exisitngProduct.url as string];
+        }
+      }, [] as string[]);
+
+      for (let productUrl of productUrls) {
+        await processWithRetry(() => processProductUrl(productUrl, page));
       }
-    }, [] as string[]);
-
-    for (let productUrl of productUrls) {
-      await processProductUrl(productUrl, page);
-    }
+    });
 
     skipCount = getNextSkipCount(skipCount, totalCount);
   }
