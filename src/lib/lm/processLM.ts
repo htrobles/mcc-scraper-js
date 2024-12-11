@@ -18,6 +18,7 @@ import {
   ProcessDocument,
   ProcessStatusEnum,
 } from '../../models/Process';
+import { autoScroll } from '../utils/autoScroll';
 
 const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
@@ -64,6 +65,9 @@ export default async function processLM() {
     const index = depUrls.findIndex((url) => url === process.lastDepUrl);
 
     depUrls = depUrls.slice(index);
+
+    logger.warn('PROCESS LAST DEP URL FOUND');
+    console.log(`INDEX: ${index} | URL: ${process.lastDepUrl}`);
   }
 
   for (let depUrl of depUrls) {
@@ -80,7 +84,9 @@ export default async function processLM() {
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
-  await MProcess.findOneAndUpdate(PROCESS_QUERY, { lastDepUrl: depUrl });
+  const process = await MProcess.findOne({
+    ...PROCESS_QUERY,
+  }).lean();
 
   await page.goto(depUrl, { waitUntil: 'networkidle2' });
 
@@ -92,10 +98,17 @@ async function processDepUrl(depUrl: string, page: Page) {
 
   const totalCount = parser(totalCountStr as string);
 
-  let currentPage = 1;
+  let currentPage = process?.productListPage || 1;
+
   let hasMore = true;
 
+  await MProcess.findOneAndUpdate(PROCESS_QUERY, { lastDepUrl: depUrl });
+
   while (hasMore) {
+    await MProcess.findOneAndUpdate(PROCESS_QUERY, {
+      productListPage: currentPage,
+    });
+
     const skipCount = (currentPage - 1) * PAGE_SIZE;
     const nextPage = skipCount + 32;
 
@@ -111,7 +124,9 @@ async function processDepUrl(depUrl: string, page: Page) {
     await processWithRetry(async () => {
       await page.goto(nextUrl, { waitUntil: 'networkidle2' });
 
-      const products = await page.$$eval('.products-item', (items) =>
+      await autoScroll(page);
+
+      let products = await page.$$eval('.products-item', (items) =>
         items.map((item) => {
           const url = item
             .querySelector('a.products-item-link')
@@ -127,34 +142,39 @@ async function processDepUrl(depUrl: string, page: Page) {
         })
       );
 
+      const process = await MProcess.findOne(PROCESS_QUERY).lean();
+
+      if (process?.lastProductUrl) {
+        const index = products.findIndex(
+          ({ url }) => url === process.lastProductUrl
+        );
+
+        if (index >= 0) {
+          products = products.slice(index);
+
+          logger.warn('PROCESS LAST PRODUCT URL FOUND');
+          console.log(process?.lastProductUrl);
+          console.log(`INDEX: ${index}`);
+        }
+      }
+
       const productSkus = products.map(({ sku }) => sku);
 
-      const lightspeedProducts = await MRawProduct.find({
-        sku: { $in: productSkus },
-      }).lean();
+      const lightSpeedSkus = (
+        await MRawProduct.find({
+          sku: { $in: productSkus },
+        }).lean()
+      ).map((p) => p.sku);
 
-      let productUrls = lightspeedProducts.reduce((prev, product) => {
-        const { sku } = product;
-        const exisitngProduct = products.find((p) => p.sku === sku);
+      let productUrls = products.reduce((prev, { sku, url }) => {
+        const exisitngProduct = lightSpeedSkus.find((lsSku) => lsSku === sku);
 
         if (!exisitngProduct) {
           return prev;
         } else {
-          return [...prev, exisitngProduct.url as string];
+          return [...prev, url as string];
         }
       }, [] as string[]);
-
-      const process = await MProcess.findOne(PROCESS_QUERY).lean();
-
-      if (process?.lastProductUrl) {
-        const index = productUrls.findIndex(
-          (url) => url === process.lastProductUrl
-        );
-
-        if (index >= 0) {
-          productUrls.slice(index);
-        }
-      }
 
       for (let productUrl of productUrls) {
         await processWithRetry(() => processProductUrl(productUrl, page));
@@ -164,11 +184,11 @@ async function processDepUrl(depUrl: string, page: Page) {
 }
 
 export async function processProductUrl(productUrl: string, page: Page) {
-  await MProcess.findOneAndUpdate(PROCESS_QUERY, {
-    lastProductUrl: productUrl,
-  });
-
   try {
+    await MProcess.findOneAndUpdate(PROCESS_QUERY, {
+      lastProductUrl: productUrl,
+    });
+
     await page.goto(productUrl, { waitUntil: 'networkidle2' });
 
     const skuElement = await page.waitForSelector(
