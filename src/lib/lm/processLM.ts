@@ -12,10 +12,26 @@ import { ProductImage } from '../../models/ProductTypes';
 import NumberParser from 'intl-number-parser';
 import { MRawProduct } from '../../models/RawProduct';
 import processWithRetry from '../utils/processUrl';
+import promptSync from 'prompt-sync';
+import {
+  MProcess,
+  ProcessDocument,
+  ProcessStatusEnum,
+} from '../../models/Process';
 
+const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
 
+const PAGE_SIZE = 32;
+
+const PROCESS_QUERY = {
+  status: ProcessStatusEnum.ONGOING,
+  supplier: SupplierEnum.LM,
+};
+
 export default async function processLM() {
+  await initiateProcess();
+
   await saveRawProducts();
 
   const browser = await puppeteer.launch({
@@ -36,6 +52,20 @@ export default async function processLM() {
         .map((link) => link.href)
   );
 
+  const process = (await MProcess.findOne(
+    PROCESS_QUERY
+  ).lean()) as ProcessDocument;
+
+  if (!process) {
+    throw new Error('Process not found');
+  }
+
+  if (process.lastDepUrl) {
+    const index = depUrls.findIndex((url) => url === process.lastDepUrl);
+
+    depUrls = depUrls.slice(index);
+  }
+
   for (let depUrl of depUrls) {
     await processWithRetry(() => processDepUrl(depUrl, page));
   }
@@ -50,6 +80,8 @@ export default async function processLM() {
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
+  await MProcess.findOneAndUpdate(PROCESS_QUERY, { lastDepUrl: depUrl });
+
   await page.goto(depUrl, { waitUntil: 'networkidle2' });
 
   let totalCountStr: string = await page.$eval(
@@ -60,9 +92,19 @@ async function processDepUrl(depUrl: string, page: Page) {
 
   const totalCount = parser(totalCountStr as string);
 
-  let skipCount: number | null = 0;
+  let currentPage = 1;
+  let hasMore = true;
 
-  while (skipCount !== null) {
+  while (hasMore) {
+    const skipCount = (currentPage - 1) * PAGE_SIZE;
+    const nextPage = skipCount + 32;
+
+    if (nextPage > totalCount) {
+      hasMore = false;
+    } else {
+      currentPage++;
+    }
+
     const nextUrl =
       depUrl + `?LocationsID=57&Current=${skipCount}&#top-pagination`;
 
@@ -91,7 +133,7 @@ async function processDepUrl(depUrl: string, page: Page) {
         sku: { $in: productSkus },
       }).lean();
 
-      const productUrls = lightspeedProducts.reduce((prev, product) => {
+      let productUrls = lightspeedProducts.reduce((prev, product) => {
         const { sku } = product;
         const exisitngProduct = products.find((p) => p.sku === sku);
 
@@ -102,16 +144,30 @@ async function processDepUrl(depUrl: string, page: Page) {
         }
       }, [] as string[]);
 
+      const process = await MProcess.findOne(PROCESS_QUERY).lean();
+
+      if (process?.lastProductUrl) {
+        const index = productUrls.findIndex(
+          (url) => url === process.lastProductUrl
+        );
+
+        if (index >= 0) {
+          productUrls.slice(index);
+        }
+      }
+
       for (let productUrl of productUrls) {
         await processWithRetry(() => processProductUrl(productUrl, page));
       }
     });
-
-    skipCount = getNextSkipCount(skipCount, totalCount);
   }
 }
 
 export async function processProductUrl(productUrl: string, page: Page) {
+  await MProcess.findOneAndUpdate(PROCESS_QUERY, {
+    lastProductUrl: productUrl,
+  });
+
   try {
     await page.goto(productUrl, { waitUntil: 'networkidle2' });
 
@@ -232,15 +288,6 @@ export async function processProductUrl(productUrl: string, page: Page) {
   }
 }
 
-function getNextSkipCount(
-  skipCount: number,
-  totalCount: number
-): number | null {
-  const nextPage = skipCount + 32;
-
-  return nextPage < totalCount ? nextPage : null;
-}
-
 async function saveRawProducts() {
   await MRawProduct.deleteMany();
 
@@ -278,5 +325,41 @@ async function saveRawProducts() {
       logger.error('ERROR SAVING RAW PRODUCTS');
       throw new Error('Error');
     }
+  }
+}
+
+async function initiateProcess() {
+  const unfinishedProcess = await MProcess.findOne({
+    status: { $in: [ProcessStatusEnum.FAILED, ProcessStatusEnum.ONGOING] },
+    supplier: SupplierEnum.LM,
+  }).lean();
+
+  if (unfinishedProcess) {
+    const continueProcessResponse = prompt(
+      `There was a previous ongoing process. Do you wish to continue that process? (y/N)`
+    ).toLowerCase();
+
+    if (['y', 'yes'].includes(continueProcessResponse)) {
+      logger.info('Continuing previous process...');
+
+      if (unfinishedProcess.status !== ProcessStatusEnum.ONGOING) {
+        await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
+          status: ProcessStatusEnum.ONGOING,
+        });
+      }
+    } else {
+      await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
+        status: ProcessStatusEnum.CANCELLED,
+      });
+      await new MProcess({
+        supplier: SupplierEnum.LM,
+        status: ProcessStatusEnum.ONGOING,
+      }).save();
+    }
+  } else {
+    await new MProcess({
+      supplier: SupplierEnum.LM,
+      status: ProcessStatusEnum.ONGOING,
+    }).save();
   }
 }
