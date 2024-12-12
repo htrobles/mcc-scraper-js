@@ -19,6 +19,7 @@ import {
   ProcessStatusEnum,
 } from '../../models/Process';
 import { autoScroll } from '../utils/autoScroll';
+import { stringSimilarity } from 'string-similarity-js';
 
 const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
@@ -81,11 +82,15 @@ export default async function processLM() {
   logger.success('Finished processing L.M. website');
 
   await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
+
+  await MProcess.findByIdAndUpdate(process._id, {
+    status: ProcessStatusEnum.DONE,
+  });
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
-  const process = await MProcess.findOne({
-    ...PROCESS_QUERY,
+  const process = await MProcess.findOneAndUpdate(PROCESS_QUERY, {
+    lastDepUrl: depUrl,
   }).lean();
 
   await page.goto(depUrl, { waitUntil: 'networkidle2' });
@@ -98,11 +103,18 @@ async function processDepUrl(depUrl: string, page: Page) {
 
   const totalCount = parser(totalCountStr as string);
 
-  let currentPage = process?.productListPage || 1;
+  let currentPage = 1;
+
+  if (process?.lastDepUrl === depUrl) {
+    currentPage = process.productListPage || 1;
+
+    logger.info(`CONTINUING DEPARTMENT URL FROM PREVIOUS PROCESS: ${depUrl}`);
+  } else {
+    currentPage = 1;
+    logger.info(`PROCESSING NEW DEPARTMENT URL: ${depUrl}`);
+  }
 
   let hasMore = true;
-
-  await MProcess.findOneAndUpdate(PROCESS_QUERY, { lastDepUrl: depUrl });
 
   while (hasMore) {
     await MProcess.findOneAndUpdate(PROCESS_QUERY, {
@@ -112,14 +124,18 @@ async function processDepUrl(depUrl: string, page: Page) {
     const skipCount = (currentPage - 1) * PAGE_SIZE;
     const nextPage = skipCount + 32;
 
+    const nextUrl =
+      depUrl + `?LocationsID=57&Current=${skipCount}&#top-pagination`;
+
+    logger.info(
+      `Processing Department URL Page Number ${currentPage} | ${nextUrl}`
+    );
+
     if (nextPage > totalCount) {
       hasMore = false;
     } else {
       currentPage++;
     }
-
-    const nextUrl =
-      depUrl + `?LocationsID=57&Current=${skipCount}&#top-pagination`;
 
     await processWithRetry(async () => {
       await page.goto(nextUrl, { waitUntil: 'networkidle2' });
@@ -138,7 +154,17 @@ async function processDepUrl(depUrl: string, page: Page) {
             ?.textContent?.split(':')[1]
             .trim();
 
-          return { url, sku };
+          let title = item.querySelector(
+            '.fs-6.fw-bolder.text-grey.maxh-65.m-0'
+          )?.textContent;
+
+          if (!title) {
+            title = item.querySelector(
+              '.fs-6.fw-bolder.text-grey.mb-0.maxh-60'
+            )?.textContent;
+          }
+
+          return { url, sku, title };
         })
       );
 
@@ -160,14 +186,33 @@ async function processDepUrl(depUrl: string, page: Page) {
 
       const productSkus = products.map(({ sku }) => sku);
 
-      const lightSpeedSkus = (
-        await MRawProduct.find({
-          sku: { $in: productSkus },
-        }).lean()
-      ).map((p) => p.sku);
+      const lightspeedProducts = await MRawProduct.find({
+        $or: [
+          { sku: { $in: productSkus } },
+          { customSku: { $in: productSkus } },
+        ],
+      }).lean();
 
-      let productUrls = products.reduce((prev, { sku, url }) => {
-        const exisitngProduct = lightSpeedSkus.find((lsSku) => lsSku === sku);
+      let productUrls = products.reduce((prev, { sku, url, title }) => {
+        const exisitngProduct = lightspeedProducts.find(
+          ({ sku: lsSku, title: lsTitle }) => {
+            const isSameSku = lsSku === sku;
+
+            const similarity = stringSimilarity(
+              lsTitle as string,
+              title as string
+            );
+
+            const isSimilar = isSameSku && similarity > 0.15;
+
+            if (!isSimilar) {
+              logger.error(`SIMILARITY FAILED: ${similarity} | SKU: ${sku}`);
+              logger.log(`LS TITLE: ${lsTitle} | WEB TITLE: ${title}`);
+            }
+
+            return isSimilar;
+          }
+        );
 
         if (!exisitngProduct) {
           return prev;
@@ -201,6 +246,7 @@ export async function processProductUrl(productUrl: string, page: Page) {
     const rawProduct = await MRawProduct.findOne({
       $or: [{ sku }, { customSku: sku }],
     }).lean();
+
     const existingProduct = await MProduct.findOne({ sku }).lean();
 
     if (!rawProduct) {

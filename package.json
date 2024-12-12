@@ -31,6 +31,7 @@
     "prompt-sync": "^4.2.0",
     "puppeteer": "^23.6.1",
     "sanitize-html": "^2.13.1",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "string-similarity-js": "^2.1.4"
   }
 }
