@@ -143,16 +143,26 @@ async function processDepUrl(depUrl: string, page: Page) {
       await autoScroll(page);
 
       let products = await page.$$eval('.products-item', (items) =>
-        items.map((item) => {
-          const url = item
-            .querySelector('a.products-item-link')
-            ?.getAttribute('href');
+        items.reduce((prev, item) => {
+          const imgSrc = item
+            .querySelector('img.img-fluid.maxh.w-auto.item-img')
+            ?.getAttribute('src');
+
           const sku = item
             .querySelector(
               '.products-item-descr .maxh-90.mt-1 p.mb-0.text-dark.fs-7'
             )
             ?.textContent?.split(':')[1]
             .trim();
+
+          if (imgSrc?.endsWith('noimage.jpg')) {
+            logger.warn(`Ignoring product with no image | SKU: ${sku}`);
+            return prev;
+          }
+
+          const url = item
+            .querySelector('a.products-item-link')
+            ?.getAttribute('href');
 
           let title = item.querySelector(
             '.fs-6.fw-bolder.text-grey.maxh-65.m-0'
@@ -164,8 +174,11 @@ async function processDepUrl(depUrl: string, page: Page) {
             )?.textContent;
           }
 
-          return { url, sku, title };
-        })
+          return [
+            ...prev,
+            { url: url as string, sku: sku as string, title: title as string },
+          ];
+        }, [] as { sku: string; url: string; title: string }[])
       );
 
       const process = await MProcess.findOne(PROCESS_QUERY).lean();
@@ -203,14 +216,14 @@ async function processDepUrl(depUrl: string, page: Page) {
               title as string
             );
 
-            const isSimilar = isSameSku && similarity > 0.15;
+            const isSimilar = similarity > 0.15;
 
-            if (!isSimilar) {
+            if (isSameSku && !isSimilar) {
               logger.error(`SIMILARITY FAILED: ${similarity} | SKU: ${sku}`);
               logger.log(`LS TITLE: ${lsTitle} | WEB TITLE: ${title}`);
             }
 
-            return isSimilar;
+            return isSameSku && isSimilar;
           }
         );
 
