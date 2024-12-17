@@ -6,7 +6,7 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateSimilarityReport } from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import NumberParser from 'intl-number-parser';
@@ -20,6 +20,7 @@ import {
 } from '../../models/Process';
 import { autoScroll } from '../utils/autoScroll';
 import { stringSimilarity } from 'string-similarity-js';
+import { MProductSimilarity } from '../../models/ProductSimilarity';
 
 const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
@@ -77,15 +78,26 @@ export default async function processLM() {
 
   await browser.close();
 
-  const products = await getSupplierProductsOutput(SupplierEnum.LM);
-
-  logger.success('Finished processing L.M. website');
-
-  await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
-
-  await MProcess.findByIdAndUpdate(process._id, {
-    status: ProcessStatusEnum.DONE,
+  // TODO REMOVE
+  const productSimilarities = await MProductSimilarity.find({
+    supplier: SupplierEnum.LM,
   });
+
+  await generateSimilarityReport(
+    productSimilarities,
+    'lm-product-similarity-report',
+    './output/lm'
+  );
+
+  // const products = await getSupplierProductsOutput(SupplierEnum.LM);
+
+  // logger.success('Finished processing L.M. website');
+
+  // await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
+
+  // await MProcess.findByIdAndUpdate(process._id, {
+  //   status: ProcessStatusEnum.DONE,
+  // });
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
@@ -206,33 +218,22 @@ async function processDepUrl(depUrl: string, page: Page) {
         ],
       }).lean();
 
-      let productUrls = products.reduce((prev, { sku, url, title }) => {
+      let productUrls: string[] = [];
+
+      for (const { sku, url, title } of products) {
         const exisitngProduct = lightspeedProducts.find(
-          ({ sku: lsSku, title: lsTitle }) => {
-            const isSameSku = lsSku === sku;
-
-            const similarity = stringSimilarity(
-              lsTitle as string,
-              title as string
-            );
-
-            const isSimilar = similarity > 0.15;
-
-            if (isSameSku && !isSimilar) {
-              logger.error(`SIMILARITY FAILED: ${similarity} | SKU: ${sku}`);
-              logger.log(`LS TITLE: ${lsTitle} | WEB TITLE: ${title}`);
-            }
-
-            return isSameSku && isSimilar;
+          ({ sku: lsSku, customSku }) => {
+            const isSameSku = lsSku === sku || customSku === sku;
+            return isSameSku;
           }
         );
 
         if (!exisitngProduct) {
-          return prev;
-        } else {
-          return [...prev, url as string];
+          continue;
         }
-      }, [] as string[]);
+
+        productUrls.push(url as string);
+      }
 
       for (let productUrl of productUrls) {
         await processWithRetry(() => processProductUrl(productUrl, page));
@@ -267,10 +268,33 @@ export async function processProductUrl(productUrl: string, page: Page) {
       return;
     }
 
+    const { title: lsTitle } = rawProduct;
+
     const title = await page.$eval('.product-header h1', (title) => {
       const text = title.textContent?.trim();
       return text?.replace(/\s+/g, ' ').trim(); // Replace multiple whitespaces with a single space
     });
+
+    const similarity = stringSimilarity(lsTitle as string, title as string);
+
+    const isSimilar = similarity > 0.3;
+
+    if (!isSimilar) {
+      logger.error(
+        `SIMILARITY FAILED SKIPPING PRODUCT: ${similarity} | SKU: ${sku}`
+      );
+      logger.log(`LS TITLE: ${lsTitle} | WEB TITLE: ${title}`);
+
+      return;
+    }
+
+    await new MProductSimilarity({
+      sku,
+      lsTitle,
+      storeTitle: title,
+      similarity,
+      supplier: SupplierEnum.LM,
+    }).save();
 
     const description = await page.$eval('#Description-tab', (description) => {
       description.removeAttribute('class');
