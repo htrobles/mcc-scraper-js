@@ -78,7 +78,6 @@ export default async function processLM() {
 
   await browser.close();
 
-  // TODO REMOVE
   const productSimilarities = await MProductSimilarity.find({
     supplier: SupplierEnum.LM,
   });
@@ -89,15 +88,15 @@ export default async function processLM() {
     './output/lm'
   );
 
-  // const products = await getSupplierProductsOutput(SupplierEnum.LM);
+  const products = await getSupplierProductsOutput(SupplierEnum.LM);
 
-  // logger.success('Finished processing L.M. website');
+  logger.success('Finished processing L.M. website');
 
-  // await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
+  await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
 
-  // await MProcess.findByIdAndUpdate(process._id, {
-  //   status: ProcessStatusEnum.DONE,
-  // });
+  await MProcess.findByIdAndUpdate(process._id, {
+    status: ProcessStatusEnum.DONE,
+  });
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
@@ -279,6 +278,14 @@ export async function processProductUrl(productUrl: string, page: Page) {
 
     const isSimilar = similarity > 0.3;
 
+    await new MProductSimilarity({
+      sku,
+      lsTitle,
+      storeTitle: title,
+      similarity,
+      supplier: SupplierEnum.LM,
+    }).save();
+
     if (!isSimilar) {
       logger.error(
         `SIMILARITY FAILED SKIPPING PRODUCT: ${similarity} | SKU: ${sku}`
@@ -287,14 +294,6 @@ export async function processProductUrl(productUrl: string, page: Page) {
 
       return;
     }
-
-    await new MProductSimilarity({
-      sku,
-      lsTitle,
-      storeTitle: title,
-      similarity,
-      supplier: SupplierEnum.LM,
-    }).save();
 
     const description = await page.$eval('#Description-tab', (description) => {
       description.removeAttribute('class');
