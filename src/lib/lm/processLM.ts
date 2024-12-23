@@ -32,6 +32,40 @@ const PROCESS_QUERY = {
   supplier: SupplierEnum.LM,
 };
 
+const EXCLUDED_DEP_URLS = [
+  'https://www.long-mcquade.com/departments/20621/Brass-Accessories/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20391/Brass/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20671/General-Accessories/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/1671/Band/Folk_Ethnic_Instruments.htm',
+  'https://www.long-mcquade.com/departments/20536/Music-Stands--Lights---Furniture/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20651/Orchestral-Accessories/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20411/Orchestra-Strings/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/1644/Drums/Novelty_Instuments.htm',
+  'https://www.long-mcquade.com/departments/20356/Tuners---Metronomes/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20626/Woodwind-Accessories/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/20406/Woodwinds/Band---Orchestral.htm',
+  'https://www.long-mcquade.com/departments/66/Print-Music/Bass_Guitar.htm',
+  'https://www.long-mcquade.com/departments/882/Print-Music/Brass_Instrument.htm',
+  'https://www.long-mcquade.com/departments/884/Print-Music/Choral.htm',
+  'https://www.long-mcquade.com/departments/887/Print-Music/Classroom.htm',
+  'https://www.long-mcquade.com/departments/889/Print-Music/Concert_Band.htm',
+  'https://www.long-mcquade.com/departments/19836/Print-Music/Folk_Instruments.htm',
+  'https://www.long-mcquade.com/departments/65/Print-Music/Guitar.htm',
+  'https://www.long-mcquade.com/departments/902/Print-Music/Jazz_Band.htm',
+  'https://www.long-mcquade.com/departments/19831/Print-Music/Orchestra.htm',
+  'https://www.long-mcquade.com/departments/914/Print-Music/Orchestral_Strings.htm',
+  'https://www.long-mcquade.com/departments/918/Print-Music/Percussion.htm',
+  'https://www.long-mcquade.com/departments/67/Print-Music/Piano.htm',
+  'https://www.long-mcquade.com/departments/925/Print-Music/Theory.htm',
+  'https://www.long-mcquade.com/departments/19826/Print-Music/Voice.htm',
+  'https://www.long-mcquade.com/departments/930/Print-Music/Woodwind.htm',
+  'https://www.long-mcquade.com/departments/1673/Drums/Clothing_Hats_Misc.htm',
+  'https://www.long-mcquade.com/departments/257/Guitars/Accessories/Clothing_And_Accessories.htm',
+  'https://www.long-mcquade.com/departments/19941/Clothing---Merch/L-M-Gear.htm',
+  'https://www.long-mcquade.com/departments/19676/Print-Music/Novelties---Giftware.htm',
+  'https://www.long-mcquade.com/departments/19936/Clothing---Merch/Recording-Brands.htm',
+];
+
 export default async function processLM() {
   await initiateProcess();
 
@@ -49,10 +83,15 @@ export default async function processLM() {
 
   let depUrls = await page.$$eval(
     '.dropdown-menu.dropdown-content.dHome .sub-deps>li.dropdown-item>a.sub-menu-link-dep',
-    (links) =>
+    (links, excludedHrefs) =>
       links
-        .filter((link) => link.href.includes('/departments/'))
-        .map((link) => link.href)
+        .filter(
+          (link) =>
+            link.href.includes('/departments/') &&
+            !excludedHrefs.includes(link.href)
+        )
+        .map((link) => link.href),
+    EXCLUDED_DEP_URLS
   );
 
   const process = (await MProcess.findOne(
@@ -219,7 +258,7 @@ async function processDepUrl(depUrl: string, page: Page) {
 
       let productUrls: string[] = [];
 
-      for (const { sku, url, title } of products) {
+      for (const { sku, url } of products) {
         const exisitngProduct = lightspeedProducts.find(
           ({ sku: lsSku, customSku }) => {
             const isSameSku = lsSku === sku || customSku === sku;
