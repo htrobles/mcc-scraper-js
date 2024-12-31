@@ -54,3 +54,34 @@ export default async function generateCsv(
     .then(() => logger.success('CSV file created successfully'))
     .catch((err) => logger.error(err));
 }
+
+export async function generateSimilarityReport(
+  productSimilarities: { [key: string]: any }[],
+  filename: string,
+  outDir: string
+) {
+  const headers = [
+    { id: 'sku', title: 'Variant SKU' },
+    { id: 'lsTitle', title: 'Lightspeed Title' },
+    { id: 'storeTitle', title: 'Store Title' },
+    { id: 'similarity', title: 'Similarity Rate' },
+  ];
+
+  let finalFilename = filename;
+
+  if (!filename.endsWith('.csv')) {
+    finalFilename = `${filename}.csv`;
+  }
+
+  const pathname = `${outDir}/${finalFilename}`;
+
+  const csvWriter = createObjectCsvWriter({
+    path: pathname,
+    header: headers,
+  });
+
+  csvWriter
+    .writeRecords(productSimilarities)
+    .then(() => logger.success('CSV file created successfully'))
+    .catch((err) => logger.error(err));
+}

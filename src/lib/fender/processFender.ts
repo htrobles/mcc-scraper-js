@@ -23,7 +23,7 @@ export default async function processFender() {
 
   const page = await browser.newPage();
 
-  await page.goto(config.FENDER_LOGIN_URL, { waitUntil: 'networkidle0' });
+  await page.goto(config.FENDER_LOGIN_URL, { waitUntil: 'networkidle2' });
 
   await page.type('#emailInput', config.FENDER_USERNAME);
   await page.type('#passwordInput', config.FENDER_PASSWORD);
@@ -31,7 +31,7 @@ export default async function processFender() {
 
   await Promise.all([
     await page.click('#submitLoginButton'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'networkidle2' }),
   ]);
 
   for (let { sku, systemId } of rawProducts) {

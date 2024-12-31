@@ -14,6 +14,7 @@ import { StoreEnum } from '../models/ProductPricing';
 import processTomLeeMusic from './tomleemusic/processTomLeeMusic';
 import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
 import processCosmoMusic from './cosmoMusic/processCosmoMusic';
+import processLM from './lm/processLM';
 
 const prompt = promptSync({ sigint: true });
 
@@ -66,6 +67,9 @@ export async function getProductInfo() {
       break;
     case SupplierEnum.DADDARIO:
       await processDaddario();
+      break;
+    case SupplierEnum.LM:
+      await processLM();
       break;
     default:
       break;

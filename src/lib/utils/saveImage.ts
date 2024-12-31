@@ -15,7 +15,7 @@ export default async function saveImage(
     const finalPath = `${outputDir}/${imageName}`;
 
     if (fileExists(finalPath)) {
-      return logger.log(`Image already exists: ${imageName}`);
+      return;
     }
 
     fs.mkdirSync(outputDir, { recursive: true });
