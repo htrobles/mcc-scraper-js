@@ -7,6 +7,7 @@ export enum SupplierEnum {
   FENDER = 'Fender',
   DADDARIO = 'Daddario',
   LM = 'LM',
+  BURGERLIGHTING = 'BurgerLighting',
 }
 
 export interface Product {

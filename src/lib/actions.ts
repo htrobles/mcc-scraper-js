@@ -15,6 +15,7 @@ import processTomLeeMusic from './tomleemusic/processTomLeeMusic';
 import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
 import processCosmoMusic from './cosmoMusic/processCosmoMusic';
 import processLM from './lm/processLM';
+import processBurgerLighting from './burgerLighting/processBurgerLighting';
 
 const prompt = promptSync({ sigint: true });
 
@@ -70,6 +71,9 @@ export async function getProductInfo() {
       break;
     case SupplierEnum.LM:
       await processLM();
+      break;
+    case SupplierEnum.BURGERLIGHTING:
+      await processBurgerLighting();
       break;
     default:
       break;

@@ -9,6 +9,7 @@ import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
 import generateCsv from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
+import waitForDuration from '../utils/waitForDuration';
 
 export default async function processDaddario() {
   const rawData = await parseCsv('./input/daddario.csv');
@@ -29,7 +30,7 @@ export default async function processDaddario() {
   await page.type('#uname', config.DADDARIO_USERNAME);
   await page.type('#pwd', config.DADDARIO_PASSWORD);
 
-  await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+  await waitForDuration(1000);
 
   await page.keyboard.press('Enter');
   await page.waitForNavigation({ waitUntil: 'networkidle2' });

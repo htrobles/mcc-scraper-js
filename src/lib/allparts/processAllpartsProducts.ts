@@ -3,6 +3,7 @@ import { MProduct, Product, SupplierEnum } from '../../models/Product';
 import logger from 'node-color-log';
 import saveImage from '../utils/saveImage';
 import config from '../../config';
+import waitForDuration from '../utils/waitForDuration';
 
 interface SelectData {
   id: string;
@@ -83,7 +84,7 @@ async function processVariantSelects(
   for (const value of values) {
     await page.select(`#${id}`, value);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+    await waitForDuration(1000);
 
     if (selectData[index + 1]) {
       const newSelectData: SelectData[] = await page.$$eval(

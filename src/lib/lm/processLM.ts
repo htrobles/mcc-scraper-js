@@ -1,5 +1,4 @@
 import puppeteer, { Page } from 'puppeteer';
-import parseCsv from '../utils/parseCsv';
 import config from '../../config';
 import logger from 'node-color-log';
 import { MProduct, SupplierEnum } from '../../models/Product';
@@ -21,6 +20,8 @@ import {
 import { autoScroll } from '../utils/autoScroll';
 import { stringSimilarity } from 'string-similarity-js';
 import { MProductSimilarity } from '../../models/ProductSimilarity';
+import initiateProcess from '../utils/initiateProcess';
+import { clearRawProducts, saveRawProducts } from '../utils/saveRawProducts';
 
 const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
@@ -67,7 +68,7 @@ const EXCLUDED_DEP_URLS = [
 ];
 
 export default async function processLM() {
-  await initiateProcess();
+  await initiateProcess(SupplierEnum.BURGERLIGHTING);
 
   await saveRawProducts();
 
@@ -136,6 +137,8 @@ export default async function processLM() {
   await MProcess.findByIdAndUpdate(process._id, {
     status: ProcessStatusEnum.DONE,
   });
+
+  await clearRawProducts();
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
@@ -426,81 +429,5 @@ export async function processProductUrl(productUrl: string, page: Page) {
   } catch (error) {
     logger.error(`Unable to process product: ${productUrl}`);
     console.log(error);
-  }
-}
-
-async function saveRawProducts() {
-  await MRawProduct.deleteMany();
-
-  const PAGE_SIZE = 100;
-
-  const rawData = await parseCsv('./input/products.csv');
-  const rawProducts = rawData
-    .map((row) => ({
-      sku: row[4],
-      systemId: row[0],
-      title: row[5],
-      customSku: row[3],
-    }))
-    .slice(1);
-
-  let totalCount = rawProducts.length;
-  let page = 1;
-  let hasMore = true;
-
-  while (hasMore) {
-    const x = (page - 1) * PAGE_SIZE;
-    const y = page * PAGE_SIZE - 1;
-
-    const products = rawProducts.slice(x, y);
-
-    try {
-      await MRawProduct.insertMany(products);
-
-      if (totalCount > y + 1) {
-        page++;
-      } else {
-        hasMore = false;
-      }
-    } catch (error) {
-      logger.error('ERROR SAVING RAW PRODUCTS');
-      throw new Error('Error');
-    }
-  }
-}
-
-async function initiateProcess() {
-  const unfinishedProcess = await MProcess.findOne({
-    status: { $in: [ProcessStatusEnum.FAILED, ProcessStatusEnum.ONGOING] },
-    supplier: SupplierEnum.LM,
-  }).lean();
-
-  if (unfinishedProcess) {
-    const continueProcessResponse = prompt(
-      `There was a previous ongoing process. Do you wish to continue that process? (y/N)`
-    ).toLowerCase();
-
-    if (['y', 'yes'].includes(continueProcessResponse)) {
-      logger.info('Continuing previous process...');
-
-      if (unfinishedProcess.status !== ProcessStatusEnum.ONGOING) {
-        await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
-          status: ProcessStatusEnum.ONGOING,
-        });
-      }
-    } else {
-      await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
-        status: ProcessStatusEnum.CANCELLED,
-      });
-      await new MProcess({
-        supplier: SupplierEnum.LM,
-        status: ProcessStatusEnum.ONGOING,
-      }).save();
-    }
-  } else {
-    await new MProcess({
-      supplier: SupplierEnum.LM,
-      status: ProcessStatusEnum.ONGOING,
-    }).save();
   }
 }
