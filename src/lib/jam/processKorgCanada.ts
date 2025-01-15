@@ -6,7 +6,7 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
 
 export default async function processKorgCanada() {
   const rawData = await parseCsv('./input/korgCanada.csv');
@@ -34,6 +34,11 @@ export default async function processKorgCanada() {
     products,
     'korgCanada-scraper-output.csv',
     './output/korgCanada'
+  );
+  await generateShopifyCsv(
+    products,
+    `korgCanada-scraper-output-shopify.csv`,
+    `./output/korgCanada`
   );
 }
 

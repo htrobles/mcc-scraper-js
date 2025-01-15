@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import processAllpartsProducts from './processAllpartsProducts';
 import logger from 'node-color-log';
 import { MProduct, SupplierEnum } from '../../models/Product';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
 import config from '../../config';
 
 export default async function processAllparts() {
@@ -61,5 +61,11 @@ export default async function processAllparts() {
     products,
     'allparts-scraper-output.csv',
     './output/allparts'
+  );
+
+  await generateShopifyCsv(
+    products,
+    `allparts-scraper-output-shopify.csv`,
+    `./output/allparts`
   );
 }

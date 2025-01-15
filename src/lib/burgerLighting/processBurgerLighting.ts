@@ -5,7 +5,10 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv, { generateSimilarityReport } from '../utils/generateCsv';
+import generateCsv, {
+  generateShopifyCsv,
+  generateSimilarityReport,
+} from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import NumberParser from 'intl-number-parser';
@@ -88,6 +91,11 @@ export default async function processBurgerLighting() {
     products,
     'burgerLighting-scraper-output.csv',
     './output/burgerLighting'
+  );
+  await generateShopifyCsv(
+    products,
+    `burgerLighting-scraper-output-shopify.csv`,
+    `./output/burgerLighting`
   );
 
   await MProcess.findByIdAndUpdate(process._id, {

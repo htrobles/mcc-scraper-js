@@ -5,7 +5,10 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv, { generateSimilarityReport } from '../utils/generateCsv';
+import generateCsv, {
+  generateShopifyCsv,
+  generateSimilarityReport,
+} from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import NumberParser from 'intl-number-parser';
@@ -133,6 +136,11 @@ export default async function processLM() {
   logger.success('Finished processing L.M. website');
 
   await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
+  await generateShopifyCsv(
+    products,
+    'lm-scraper-output-shopify.csv',
+    './output/lm'
+  );
 
   await MProcess.findByIdAndUpdate(process._id, {
     status: ProcessStatusEnum.DONE,

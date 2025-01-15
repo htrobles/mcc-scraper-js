@@ -6,7 +6,7 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 
 export default async function processFender() {
@@ -45,6 +45,11 @@ export default async function processFender() {
   logger.success('Finished processing Fender website');
 
   await generateCsv(products, 'fender-scraper-output.csv', './output/fender');
+  await generateShopifyCsv(
+    products,
+    `fender-scraper-output-shopify.csv`,
+    `./output/fender`
+  );
 }
 
 export async function processProductUrl(

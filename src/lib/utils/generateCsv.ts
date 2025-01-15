@@ -55,6 +55,41 @@ export default async function generateCsv(
     .catch((err) => logger.error(err));
 }
 
+export async function generateShopifyCsv(
+  products: { [key: string]: any }[],
+  filename: string,
+  outDir: string
+) {
+  const headers = [
+    { id: 'sku', title: 'Variant SKU' },
+    { id: 'descriptionHtml', title: 'Body HTML' },
+  ];
+
+  let finalFilename = filename;
+
+  if (!filename.endsWith('.csv')) {
+    finalFilename = `${filename}.csv`;
+  }
+
+  const pathname = `${outDir}/${finalFilename}`;
+
+  const csvWriter = createObjectCsvWriter({
+    path: pathname,
+    header: headers,
+  });
+
+  const rows = products.map((product) => ({
+    ...product,
+    addTags: 'add, instock',
+    replaceTags: 'Yes',
+  }));
+
+  csvWriter
+    .writeRecords(rows)
+    .then(() => logger.success('CSV file created successfully'))
+    .catch((err) => logger.error(err));
+}
+
 export async function generateSimilarityReport(
   productSimilarities: { [key: string]: any }[],
   filename: string,

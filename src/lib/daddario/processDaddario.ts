@@ -6,7 +6,7 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import waitForDuration from '../utils/waitForDuration';
@@ -49,6 +49,11 @@ export default async function processDaddario() {
     products,
     'daddario-scraper-output.csv',
     './output/daddario'
+  );
+  await generateShopifyCsv(
+    products,
+    `daddario-scraper-output-shopify.csv`,
+    `./output/coastMusic`
   );
 }
 

@@ -6,7 +6,7 @@ import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv from '../utils/generateCsv';
+import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
 
 export default async function processCoastMusic() {
   const rawData = await parseCsv('./input/coastMusic.csv');
@@ -33,8 +33,13 @@ export default async function processCoastMusic() {
   logger.success('Finished processing Coast Music website');
   await generateCsv(
     products,
-    'coastMusic-scraper-output.csv',
-    './output/coastMusic'
+    `coastMusic-scraper-output.csv`,
+    `./output/coastMusic`
+  );
+  await generateShopifyCsv(
+    products,
+    `coastMusic-scraper-output-shopify.csv`,
+    `./output/coastMusic`
   );
 }
 
