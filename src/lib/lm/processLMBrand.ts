@@ -1,4 +1,5 @@
 import puppeteer, { Page } from 'puppeteer';
+import parseCsv from '../utils/parseCsv';
 import config from '../../config';
 import logger from 'node-color-log';
 import { MProduct, SupplierEnum } from '../../models/Product';
@@ -20,55 +21,26 @@ import {
 import { autoScroll } from '../utils/autoScroll';
 import { stringSimilarity } from 'string-similarity-js';
 import { MProductSimilarity } from '../../models/ProductSimilarity';
-import initiateProcess from '../utils/initiateProcess';
-import { clearRawProducts, saveRawProducts } from '../utils/saveRawProducts';
 
 const prompt = promptSync({ sigint: true });
 const parser = NumberParser('en-US', { style: 'decimal' });
 
-const PAGE_SIZE = 32;
+// ======== UPDATE THESE ========
+const BRAND_SUBPAGE_URLS = [
+  'https://www.long-mcquade.com/?page=brandlanding&PageName=prs&Series=prscore',
+  'https://www.long-mcquade.com/?page=brandlanding&PageName=prs&Series=prss2',
+  'https://www.long-mcquade.com/?page=brandlanding&PageName=prs&Series=prsse',
+];
+const PAGE_SIZE = 20;
+// ==============================
 
 const PROCESS_QUERY = {
   status: ProcessStatusEnum.ONGOING,
   supplier: SupplierEnum.LM,
 };
 
-const EXCLUDED_DEP_URLS = [
-  'https://www.long-mcquade.com/departments/20621/Brass-Accessories/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20391/Brass/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20671/General-Accessories/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/1671/Band/Folk_Ethnic_Instruments.htm',
-  'https://www.long-mcquade.com/departments/20536/Music-Stands--Lights---Furniture/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20651/Orchestral-Accessories/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20411/Orchestra-Strings/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/1644/Drums/Novelty_Instuments.htm',
-  'https://www.long-mcquade.com/departments/20356/Tuners---Metronomes/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20626/Woodwind-Accessories/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/20406/Woodwinds/Band---Orchestral.htm',
-  'https://www.long-mcquade.com/departments/66/Print-Music/Bass_Guitar.htm',
-  'https://www.long-mcquade.com/departments/882/Print-Music/Brass_Instrument.htm',
-  'https://www.long-mcquade.com/departments/884/Print-Music/Choral.htm',
-  'https://www.long-mcquade.com/departments/887/Print-Music/Classroom.htm',
-  'https://www.long-mcquade.com/departments/889/Print-Music/Concert_Band.htm',
-  'https://www.long-mcquade.com/departments/19836/Print-Music/Folk_Instruments.htm',
-  'https://www.long-mcquade.com/departments/65/Print-Music/Guitar.htm',
-  'https://www.long-mcquade.com/departments/902/Print-Music/Jazz_Band.htm',
-  'https://www.long-mcquade.com/departments/19831/Print-Music/Orchestra.htm',
-  'https://www.long-mcquade.com/departments/914/Print-Music/Orchestral_Strings.htm',
-  'https://www.long-mcquade.com/departments/918/Print-Music/Percussion.htm',
-  'https://www.long-mcquade.com/departments/67/Print-Music/Piano.htm',
-  'https://www.long-mcquade.com/departments/925/Print-Music/Theory.htm',
-  'https://www.long-mcquade.com/departments/19826/Print-Music/Voice.htm',
-  'https://www.long-mcquade.com/departments/930/Print-Music/Woodwind.htm',
-  'https://www.long-mcquade.com/departments/1673/Drums/Clothing_Hats_Misc.htm',
-  'https://www.long-mcquade.com/departments/257/Guitars/Accessories/Clothing_And_Accessories.htm',
-  'https://www.long-mcquade.com/departments/19941/Clothing---Merch/L-M-Gear.htm',
-  'https://www.long-mcquade.com/departments/19676/Print-Music/Novelties---Giftware.htm',
-  'https://www.long-mcquade.com/departments/19936/Clothing---Merch/Recording-Brands.htm',
-];
-
-export default async function processLM() {
-  await initiateProcess(SupplierEnum.BURGERLIGHTING);
+export default async function processLMBrand() {
+  await initiateProcess();
 
   await saveRawProducts();
 
@@ -80,21 +52,6 @@ export default async function processLM() {
 
   const page = await browser.newPage();
 
-  await page.goto(config.LM_URL, { waitUntil: 'networkidle2' });
-
-  let depUrls = await page.$$eval(
-    '.dropdown-menu.dropdown-content.dHome .sub-deps>li.dropdown-item>a.sub-menu-link-dep',
-    (links, excludedHrefs) =>
-      links
-        .filter(
-          (link) =>
-            link.href.includes('/departments/') &&
-            !excludedHrefs.includes(link.href)
-        )
-        .map((link) => link.href),
-    EXCLUDED_DEP_URLS
-  );
-
   const process = (await MProcess.findOne(
     PROCESS_QUERY
   ).lean()) as ProcessDocument;
@@ -103,17 +60,19 @@ export default async function processLM() {
     throw new Error('Process not found');
   }
 
-  if (process.lastDepUrl) {
-    const index = depUrls.findIndex((url) => url === process.lastDepUrl);
+  let subpageUrls = BRAND_SUBPAGE_URLS;
 
-    depUrls = depUrls.slice(index);
+  if (process.lastDepUrl) {
+    const index = subpageUrls.findIndex((url) => url === process.lastDepUrl);
+
+    subpageUrls = subpageUrls.slice(index);
 
     logger.warn('PROCESS LAST DEP URL FOUND');
-    console.log(`INDEX: ${index} | URL: ${process.lastDepUrl}`);
+    logger.log(`INDEX: ${index} | URL: ${process.lastDepUrl}`);
   }
 
-  for (let depUrl of depUrls) {
-    await processWithRetry(() => processDepUrl(depUrl, page));
+  for (let subpageUrl of BRAND_SUBPAGE_URLS) {
+    await processWithRetry(() => processDepUrl(subpageUrl, page));
   }
 
   await browser.close();
@@ -125,20 +84,21 @@ export default async function processLM() {
   await generateSimilarityReport(
     productSimilarities,
     'lm-product-similarity-report',
-    './output/lm'
+    './output/lm-brand'
   );
 
   const products = await getSupplierProductsOutput(SupplierEnum.LM);
 
   logger.success('Finished processing L.M. website');
 
-  await generateCsv(products, 'lm-scraper-output.csv', './output/lm');
+  await generateCsv(products, 'lm-scraper-output.csv', './output/lm-brand');
 
   await MProcess.findByIdAndUpdate(process._id, {
     status: ProcessStatusEnum.DONE,
   });
 
-  await clearRawProducts();
+  await MProduct.deleteMany({ supplier: SupplierEnum.LM });
+  await MRawProduct.deleteMany();
 }
 
 async function processDepUrl(depUrl: string, page: Page) {
@@ -149,7 +109,7 @@ async function processDepUrl(depUrl: string, page: Page) {
   await page.goto(depUrl, { waitUntil: 'networkidle2' });
 
   let totalCountStr: string = await page.$eval(
-    '#top-pagination',
+    '.product-results .row .d-flex.justify-content-end',
     (paginationRow) =>
       paginationRow.textContent?.split('of')[1].trim() as string
   );
@@ -175,7 +135,7 @@ async function processDepUrl(depUrl: string, page: Page) {
     });
 
     const skipCount = (currentPage - 1) * PAGE_SIZE;
-    const nextPage = skipCount + 32;
+    const nextPage = skipCount + PAGE_SIZE;
 
     const nextUrl =
       depUrl + `?LocationsID=57&Current=${skipCount}&#top-pagination`;
@@ -195,7 +155,7 @@ async function processDepUrl(depUrl: string, page: Page) {
 
       await autoScroll(page);
 
-      let products = await page.$$eval('.products-item', (items) =>
+      let products = await page.$$eval('.products-row .m-item', (items) =>
         items.reduce((prev, item) => {
           const imgSrc = item
             .querySelector('img.img-fluid.maxh.w-auto.item-img')
@@ -203,7 +163,7 @@ async function processDepUrl(depUrl: string, page: Page) {
 
           const sku = item
             .querySelector(
-              '.products-item-descr .maxh-90.mt-1 p.mb-0.text-dark.fs-7'
+              '.products-item-descr .maxh-110-true p.mb-0.fs-7.text-dark'
             )
             ?.textContent?.replace('Model: ', '')
             .trim();
@@ -223,7 +183,7 @@ async function processDepUrl(depUrl: string, page: Page) {
 
           if (!title) {
             title = item.querySelector(
-              '.fs-6.fw-bolder.text-grey.mb-0.maxh-60'
+              '.fw-bolder.text-grey.maxh-55.ellipsis-3.mb-0'
             )?.textContent;
           }
 
@@ -245,8 +205,8 @@ async function processDepUrl(depUrl: string, page: Page) {
           products = products.slice(index);
 
           logger.warn('PROCESS LAST PRODUCT URL FOUND');
-          console.log(process?.lastProductUrl);
-          console.log(`INDEX: ${index}`);
+          logger.log(process?.lastProductUrl);
+          logger.log(`INDEX: ${index}`);
         }
       }
 
@@ -365,9 +325,7 @@ export async function processProductUrl(productUrl: string, page: Page) {
       (elements, sku) =>
         elements.map((el, index) => {
           return {
-            imageName: `${sku
-              ?.replace('/', '-')
-              .replace('/', '-')}-${index}.jpg`,
+            imageName: `${sku?.replace(/[:\/]/g, '-')}-${index}.jpg`,
             isFeatured: index === 0,
             url: el.getAttribute('data-src'),
           };
@@ -381,7 +339,7 @@ export async function processProductUrl(productUrl: string, page: Page) {
     for (const data of imageData as ProductImage[]) {
       const { url, imageName, isFeatured } = data;
 
-      await saveImage(url, imageName, './output/lm/images');
+      await saveImage(url, imageName, './output/lm-brand/images');
 
       if (isFeatured) {
         featuredImage = imageName;
@@ -429,5 +387,81 @@ export async function processProductUrl(productUrl: string, page: Page) {
   } catch (error) {
     logger.error(`Unable to process product: ${productUrl}`);
     console.log(error);
+  }
+}
+
+async function saveRawProducts() {
+  await MRawProduct.deleteMany();
+
+  const PAGE_SIZE = 100;
+
+  const rawData = await parseCsv('./input/lm-brand-products.csv');
+  const rawProducts = rawData
+    .map((row) => ({
+      sku: row[4],
+      systemId: row[0],
+      title: row[5],
+      customSku: row[3],
+    }))
+    .slice(1);
+
+  let totalCount = rawProducts.length;
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const x = (page - 1) * PAGE_SIZE;
+    const y = page * PAGE_SIZE - 1;
+
+    const products = rawProducts.slice(x, y);
+
+    try {
+      await MRawProduct.insertMany(products);
+
+      if (totalCount > y + 1) {
+        page++;
+      } else {
+        hasMore = false;
+      }
+    } catch (error) {
+      logger.error('ERROR SAVING RAW PRODUCTS');
+      throw new Error('Error');
+    }
+  }
+}
+
+async function initiateProcess() {
+  const unfinishedProcess = await MProcess.findOne({
+    status: { $in: [ProcessStatusEnum.FAILED, ProcessStatusEnum.ONGOING] },
+    supplier: SupplierEnum.LM,
+  }).lean();
+
+  if (unfinishedProcess) {
+    const continueProcessResponse = prompt(
+      `There was a previous ongoing process. Do you wish to continue that process? (y/N)`
+    ).toLowerCase();
+
+    if (['y', 'yes'].includes(continueProcessResponse)) {
+      logger.info('Continuing previous process...');
+
+      if (unfinishedProcess.status !== ProcessStatusEnum.ONGOING) {
+        await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
+          status: ProcessStatusEnum.ONGOING,
+        });
+      }
+    } else {
+      await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
+        status: ProcessStatusEnum.CANCELLED,
+      });
+      await new MProcess({
+        supplier: SupplierEnum.LM,
+        status: ProcessStatusEnum.ONGOING,
+      }).save();
+    }
+  } else {
+    await new MProcess({
+      supplier: SupplierEnum.LM,
+      status: ProcessStatusEnum.ONGOING,
+    }).save();
   }
 }

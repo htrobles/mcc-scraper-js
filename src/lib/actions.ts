@@ -16,6 +16,7 @@ import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
 import processCosmoMusic from './cosmoMusic/processCosmoMusic';
 import processLM from './lm/processLM';
 import processBurgerLighting from './burgerLighting/processBurgerLighting';
+import processLMBrand from './lm/processLMBrand';
 
 const prompt = promptSync({ sigint: true });
 
@@ -70,7 +71,11 @@ export async function getProductInfo() {
       await processDaddario();
       break;
     case SupplierEnum.LM:
-      await processLM();
+      if (chosenSupplier.scrapeBrand) {
+        await processLMBrand();
+      } else {
+        await processLM();
+      }
       break;
     case SupplierEnum.BURGERLIGHTING:
       await processBurgerLighting();

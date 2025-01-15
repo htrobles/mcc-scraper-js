@@ -33,6 +33,11 @@ export const supplierChoices = [
     label: 'L.M.',
   },
   {
+    key: SupplierEnum.LM,
+    label: 'L.M. - Brand',
+    scrapeBrand: true,
+  },
+  {
     key: SupplierEnum.BURGERLIGHTING,
     label: 'Burger Lighting',
   },
