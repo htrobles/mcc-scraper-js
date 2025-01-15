@@ -24,6 +24,7 @@ const config = cleanEnv(process.env, {
   ACCLAIM_MUSIC_URL: str(),
   COSMO_MUSIC_URL: str(),
   LM_URL: str(),
+  BURGER_LIGHTING_URL: str(),
 });
 
 export default config;

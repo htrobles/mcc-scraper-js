@@ -13,6 +13,7 @@ export interface Process {
   status: ProcessStatusEnum;
   supplier: SupplierEnum;
   lastDepUrl?: string;
+  lastSku?: string;
   productListPage?: number;
   lastProductUrl?: string;
 }
@@ -23,6 +24,7 @@ const processSchema = new mongoose.Schema({
   lastDepUrl: { type: String },
   productListPage: { type: Number },
   lastProductUrl: { type: String },
+  lastSku: { type: String },
   status: {
     required: true,
     type: String,

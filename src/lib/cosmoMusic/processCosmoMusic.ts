@@ -5,6 +5,7 @@ import { MProductPricing, StoreEnum } from '../../models/ProductPricing';
 import { autoScroll } from '../utils/autoScroll';
 import NumberParser from 'intl-number-parser';
 import { generatePriceComparisonCsv } from '../utils/generatePricingCsv';
+import waitForDuration from '../utils/waitForDuration';
 
 const parser = NumberParser('en-US', { style: 'currency', currency: 'USD' });
 
@@ -28,7 +29,7 @@ export default async function processCosmoMusic() {
         waitUntil: 'networkidle2',
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await waitForDuration(2000);
 
       try {
         const isEnd = await page.$eval(
