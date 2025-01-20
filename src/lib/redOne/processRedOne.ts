@@ -20,7 +20,6 @@ import {
   ProcessDocument,
   ProcessStatusEnum,
 } from '../../models/Process';
-import { stringSimilarity } from 'string-similarity-js';
 import { MProductSimilarity } from '../../models/ProductSimilarity';
 import initiateProcess from '../utils/initiateProcess';
 import { saveRawProducts } from '../utils/saveRawProducts';

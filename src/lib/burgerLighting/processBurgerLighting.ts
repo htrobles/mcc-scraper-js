@@ -11,10 +11,8 @@ import generateCsv, {
 } from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
-import NumberParser from 'intl-number-parser';
 import { MRawProduct, RawProduct } from '../../models/RawProduct';
 import processWithRetry from '../utils/processUrl';
-import promptSync from 'prompt-sync';
 import {
   MProcess,
   ProcessDocument,
