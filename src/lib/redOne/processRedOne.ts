@@ -74,38 +74,35 @@ export default async function processRedOne() {
     await processWithRetry(() => processSku(rawProduct as RawProduct, page));
   }
 
-  // await browser.close();
+  await browser.close();
 
-  // const productSimilarities = await MProductSimilarity.find({
-  //   supplier: SupplierEnum.REDONE,
-  // });
+  const productSimilarities = await MProductSimilarity.find({
+    supplier: SupplierEnum.REDONE,
+  });
 
-  // await generateSimilarityReport(
-  //   productSimilarities,
-  //   'redOne-product-similarity-report',
-  //   './output/redOne'
-  // );
+  await generateSimilarityReport(
+    productSimilarities,
+    'redOne-product-similarity-report',
+    './output/redOne'
+  );
 
-  // const products = await getSupplierProductsOutput(SupplierEnum.REDONE);
+  const products = await getSupplierProductsOutput(SupplierEnum.REDONE);
 
-  // logger.success('Finished processing B and H Music website');
+  logger.success('Finished processing RedOne Music website');
 
-  // await generateCsv(
-  //   products,
-  //   'redOne-scraper-output.csv',
-  //   './output/redOne'
-  // );
-  // await generateShopifyCsv(
-  //   products,
-  //   `redOne-scraper-output-shopify.csv`,
-  //   `./output/redOne`
-  // );
+  await generateCsv(products, 'redOne-scraper-output.csv', './output/redOne');
+  await generateShopifyCsv(
+    products,
+    `redOne-scraper-output-shopify.csv`,
+    `./output/redOne`
+  );
 
-  // await MProcess.findByIdAndUpdate(process._id, {
-  //   status: ProcessStatusEnum.DONE,
-  // });
+  await MProcess.findByIdAndUpdate(process._id, {
+    status: ProcessStatusEnum.DONE,
+  });
 
-  // await MRawProduct.deleteMany();
+  await MProductSimilarity.deleteMany({ supplier: SupplierEnum.REDONE });
+  await MRawProduct.deleteMany();
 }
 
 export async function processSku(rawProduct: RawProduct, page: Page) {
@@ -158,15 +155,15 @@ async function processProductUrl(
 
   await page.goto(productUrl, { waitUntil: 'networkidle2' });
 
-  const sku = await page.$eval('div[data-selenium="codeCrumb"]', (skuEl) => {
-    const words = skuEl.innerText.split('MFR #');
+  const sku = await page.$eval('span.product-meta__sku-number', (skuEl) =>
+    skuEl.textContent?.trim()
+  );
 
-    return words[words.length - 1].trim();
-  });
+  if (rawSku !== sku) return;
 
   const existingProduct = await MProduct.findOne({ sku }).lean();
 
-  const title = await page.$eval('h1[data-selenium="productTitle"]', (title) =>
+  const title = await page.$eval('h1.product-meta__title', (title) =>
     title.innerText?.trim()
   );
 
@@ -186,91 +183,91 @@ async function processProductUrl(
     return;
   }
 
-  const description = await page.$eval('#productDescription', (description) => {
-    description.removeAttribute('class');
-    description.removeAttribute('id');
-    const text = description.textContent?.trim().replace(/\n/g, '\\n');
-    const html = description.outerHTML;
+  const description = await page.$eval(
+    '.product-block-list__item--description .rte.text--pull',
+    (description) => {
+      description.removeAttribute('class');
+      description.removeAttribute('id');
+      const text = description.textContent?.trim().replace(/\n/g, '\\n');
 
-    return { text, html };
+      return { text, html: description.outerHTML };
+    }
+  );
+
+  description.html = minify(parseHtml(description.html), {
+    removeTagWhitespace: true,
+    collapseWhitespace: true,
+    collapseInlineTagWhitespace: true,
   });
 
-  // description.html = parseHtml(description.html);
+  let missingDescription = !description.text;
 
-  // let missingDescription = !description.text;
+  if (!description.text) {
+    if (config.REPLACE_EMPTY_DESC_WITH_TITLE) {
+      description.text = title;
+      description.html = `<p>${title}</p>`;
+    } else {
+      logger.warn(`No description found: ${sku}`);
+      return;
+    }
+  }
 
-  // if (!description.text) {
-  //   if (config.REPLACE_EMPTY_DESC_WITH_TITLE) {
-  //     description.text = title;
-  //     description.html = `<p>${title}</p>`;
-  //   } else {
-  //     logger.warn(`No description found: ${sku}`);
-  //     return;
-  //   }
-  // }
+  const imageData = await page.$$eval(
+    'a.product-gallery__thumbnail',
+    (elements, sku) =>
+      elements.map((el, index) => {
+        return {
+          imageName: `${sku?.replace('/', '-').replace('/', '-')}-${index}.jpg`,
+          isFeatured: index === 0,
+          url: el.href,
+        };
+      }),
+    sku
+  );
 
-  // const imageData = await page.$$eval(
-  //   '#product-images a',
-  //   (elements, sku) =>
-  //     elements.map((el, index) => {
-  //       return {
-  //         imageName: `${sku?.replace('/', '-').replace('/', '-')}-${index}.jpg`,
-  //         isFeatured: index === 0,
-  //         url: el.href,
-  //       };
-  //     }),
-  //   sku
-  // );
+  const images: string[] = [];
+  let featuredImage = '';
 
-  // const images: string[] = [];
-  // let featuredImage = '';
+  for (const data of imageData as ProductImage[]) {
+    const { url, imageName, isFeatured } = data;
 
-  // for (const data of imageData as ProductImage[]) {
-  //   const { url, imageName, isFeatured } = data;
+    await saveImage(url, imageName, './output/redOne/images');
 
-  //   await saveImage(url, imageName, './output/redOne/images');
+    if (isFeatured) {
+      featuredImage = imageName;
+    } else {
+      images.push(imageName);
+    }
+  }
 
-  //   if (isFeatured) {
-  //     featuredImage = imageName;
-  //   } else {
-  //     images.push(imageName);
-  //   }
-  // }
+  if (config.UPSERT_DATA && !!existingProduct) {
+    await MProduct.findByIdAndUpdate(existingProduct._id, {
+      systemId: rawProduct.systemId,
+      sku,
+      title,
+      descriptionText: description.text,
+      descriptionHtml: description.html,
+      images,
+      featuredImage,
+      supplier: SupplierEnum.REDONE,
+      missingDescription,
+    });
 
-  // const minifiedHtmlDesc = minify(description.html, {
-  //   removeTagWhitespace: true,
-  //   collapseWhitespace: true,
-  //   collapseInlineTagWhitespace: true,
-  // });
+    logger.success(`Updated Product: ${sku} | ${title}`);
+  } else {
+    const product = new MProduct({
+      systemId: rawProduct.systemId,
+      sku,
+      title,
+      descriptionText: description.text,
+      descriptionHtml: description.html,
+      images,
+      featuredImage,
+      supplier: SupplierEnum.REDONE,
+      missingDescription,
+    });
 
-  // if (config.UPSERT_DATA && !!existingProduct) {
-  //   await MProduct.findByIdAndUpdate(existingProduct._id, {
-  //     systemId: rawProduct.systemId,
-  //     sku,
-  //     title,
-  //     descriptionText: description.text,
-  //     descriptionHtml: minifiedHtmlDesc,
-  //     images,
-  //     featuredImage,
-  //     supplier: SupplierEnum.REDONE,
-  //     missingDescription,
-  //   });
-
-  //   logger.success(`Updated Product: ${sku} | ${title}`);
-  // } else {
-  //   const product = new MProduct({
-  //     systemId: rawProduct.systemId,
-  //     sku,
-  //     title,
-  //     descriptionText: description.text,
-  //     descriptionHtml: minifiedHtmlDesc,
-  //     images,
-  //     featuredImage,
-  //     supplier: SupplierEnum.REDONE,
-  //     missingDescription,
-  //   });
-
-  //   await product.save();
-  //   logger.success(`New Product: ${sku} | ${title}`);
-  // }
+    await product.save();
+    logger.success(`New Product: ${sku} | ${title}`);
+  }
 }
