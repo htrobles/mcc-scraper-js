@@ -34,15 +34,15 @@ const PROCESS_QUERY = {
 puppeteer.use(StealthPlugin());
 
 export default async function processRedOne() {
-  logger.info('PROCESSING B abd H Music');
+  logger.info('PROCESSING Red One Music');
 
   await initiateProcess(SupplierEnum.REDONE);
 
-  await saveRawProducts('product-test.csv');
+  await saveRawProducts('products.csv');
 
   const browser = await puppeteer.launch({
     headless: config.HEADLESS,
-    protocolTimeout: 60000,
+    protocolTimeout: 120000,
     waitForInitialPage: true,
   });
 
@@ -121,10 +121,6 @@ export async function processSku(rawProduct: RawProduct, page: Page) {
       delay: 100,
     });
 
-    // await waitForDuration(250);
-
-    // await page.click('button.search-bar__submit');
-
     await waitForDuration(2000);
 
     try {
@@ -136,8 +132,7 @@ export async function processSku(rawProduct: RawProduct, page: Page) {
 
       await processProductUrl(productUrl, rawProduct, page);
     } catch (error) {
-      logger.error('ERROR');
-      console.log(error);
+      logger.error(`Cannot find product SKU: ${rawSku}`);
     }
   } catch (error) {
     logger.error(`Unable to process product: ${rawSku} | ${lsTitle}`);

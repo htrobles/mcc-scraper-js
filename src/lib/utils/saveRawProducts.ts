@@ -1,5 +1,5 @@
 import logger from 'node-color-log';
-import { MRawProduct } from '../../models/RawProduct';
+import { MRawProduct, RawProduct } from '../../models/RawProduct';
 import parseCsv from './parseCsv';
 
 export async function saveRawProducts(filename: string = 'products.csv') {
@@ -9,12 +9,26 @@ export async function saveRawProducts(filename: string = 'products.csv') {
 
   const rawData = await parseCsv(`./input/${filename}`);
   const rawProducts = rawData
-    .map((row) => ({
-      sku: row[4],
-      systemId: row[0],
-      title: row[5],
-      customSku: row[3],
-    }))
+    .reduce((prev, row) => {
+      const sku = row[4];
+      const systemId = row[0];
+      const title = row[5];
+      const customSku = row[3];
+
+      if (!sku) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          sku,
+          systemId,
+          title,
+          customSku,
+        },
+      ];
+    }, [] as RawProduct[])
     .slice(1);
 
   let totalCount = rawProducts.length;
