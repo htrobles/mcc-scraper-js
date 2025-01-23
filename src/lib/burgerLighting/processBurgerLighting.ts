@@ -71,12 +71,8 @@ export default async function processBurgerLighting() {
 
   await browser.close();
 
-  const productSimilarities = await MProductSimilarity.find({
-    supplier: SupplierEnum.BURGERLIGHTING,
-  });
-
   await generateSimilarityReport(
-    productSimilarities,
+    SupplierEnum.BURGERLIGHTING,
     'burgerLighting-product-similarity-report',
     './output/burgerLighting'
   );

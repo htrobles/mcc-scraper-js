@@ -8,7 +8,7 @@ export interface RawProduct {
 }
 
 const rawProductSchema = new mongoose.Schema({
-  systemId: { type: String, unique: true },
+  systemId: { type: String, unique: true, required: true },
   sku: { type: String },
   customSku: { type: String },
   title: { type: String },

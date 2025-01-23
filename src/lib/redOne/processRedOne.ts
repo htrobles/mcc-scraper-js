@@ -75,12 +75,8 @@ export default async function processRedOne() {
 
   await browser.close();
 
-  const productSimilarities = await MProductSimilarity.find({
-    supplier: SupplierEnum.REDONE,
-  });
-
   await generateSimilarityReport(
-    productSimilarities,
+    SupplierEnum.REDONE,
     'redOne-product-similarity-report',
     './output/redOne'
   );
