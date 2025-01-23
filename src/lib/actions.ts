@@ -17,6 +17,7 @@ import processCosmoMusic from './cosmoMusic/processCosmoMusic';
 import processLM from './lm/processLM';
 import processBurgerLighting from './burgerLighting/processBurgerLighting';
 import processLMBrand from './lm/processLMBrand';
+import processRedOne from './redOne/processRedOne';
 
 const prompt = promptSync({ sigint: true });
 
@@ -80,6 +81,8 @@ export async function getProductInfo() {
     case SupplierEnum.BURGERLIGHTING:
       await processBurgerLighting();
       break;
+    case SupplierEnum.REDONE:
+      await processRedOne();
     default:
       break;
   }

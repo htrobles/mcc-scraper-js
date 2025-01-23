@@ -1,27 +1,29 @@
-import puppeteer, { Page } from 'puppeteer';
-import parseCsv from '../utils/parseCsv';
+import { Page } from 'puppeteer';
 import config from '../../config';
 import logger from 'node-color-log';
 import { MProduct, SupplierEnum } from '../../models/Product';
 import saveImage from '../utils/saveImage';
 import { minify } from 'html-minifier';
 import getSupplierProductsOutput from '../utils/getSupplierProductsOutput';
-import generateCsv, { generateShopifyCsv } from '../utils/generateCsv';
+import generateCsv, {
+  generateShopifyCsv,
+  generateSimilarityReport,
+} from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
+import { saveRawProducts } from '../utils/saveRawProducts';
+import { MRawProduct, RawProduct } from '../../models/RawProduct';
+import initiateProcess from '../utils/initiateProcess';
+import getBrowser from '../utils/getBrowser';
+import checkSimilarity from '../utils/checkSimilarity';
+import { MProductSimilarity } from '../../models/ProductSimilarity';
+import { MProcess, ProcessStatusEnum } from '../../models/Process';
+import cleanUp from '../utils/cleanUp';
 
 export default async function processFender() {
-  const rawData = await parseCsv('./input/fender.csv');
-  const rawProducts = rawData
-    .map((row) => ({ sku: row[4], systemId: row[0] }))
-    .slice(1);
+  const process = await initiateProcess(SupplierEnum.FENDER);
+  saveRawProducts('products-fender.csv');
 
-  const browser = await puppeteer.launch({
-    headless: config.HEADLESS,
-    protocolTimeout: 60000,
-    waitForInitialPage: true,
-  });
-
-  const page = await browser.newPage();
+  const { browser, page } = await getBrowser();
 
   await page.goto(config.FENDER_LOGIN_URL, { waitUntil: 'networkidle2' });
 
@@ -34,15 +36,21 @@ export default async function processFender() {
     page.waitForNavigation({ waitUntil: 'networkidle2' }),
   ]);
 
-  for (let { sku, systemId } of rawProducts) {
-    await processProductUrl(sku, systemId, page);
+  let rawProducts = await MRawProduct.find().lean();
+
+  for (const rawProduct of rawProducts) {
+    await processProductUrl(rawProduct as RawProduct, page);
   }
 
   await browser.close();
 
-  const products = await getSupplierProductsOutput(SupplierEnum.FENDER);
+  await generateSimilarityReport(
+    SupplierEnum.REDONE,
+    'redOne-product-similarity-report',
+    './output/redOne'
+  );
 
-  logger.success('Finished processing Fender website');
+  const products = await getSupplierProductsOutput(SupplierEnum.FENDER);
 
   await generateCsv(products, 'fender-scraper-output.csv', './output/fender');
   await generateShopifyCsv(
@@ -50,28 +58,54 @@ export default async function processFender() {
     `fender-scraper-output-shopify.csv`,
     `./output/fender`
   );
+
+  await cleanUp(process._id, SupplierEnum.FENDER);
+
+  logger.success('Finished processing Fender website');
 }
 
-export async function processProductUrl(
-  sku: string,
-  systemId: string,
-  page: Page
-) {
-  const productUrl = `${config.FENDER_PRODUCT_URL}/${sku}`;
+export async function processProductUrl(rawProduct: RawProduct, page: Page) {
+  const { systemId, sku, title: lsTitle } = rawProduct;
+
+  let urlSku = sku as string;
+  if (urlSku.length < 10) {
+    urlSku = '0' + sku;
+  }
+
+  const productUrl = `${config.FENDER_PRODUCT_URL}/${urlSku}`;
 
   try {
+    await page.goto(productUrl, { timeout: 60000, waitUntil: 'networkidle2' });
+
+    let title = await page.$eval(
+      '[data-cy="product-display-name"]',
+      (title) => title.textContent?.trim() as string
+    );
+
+    const { isSimilar, similarity } = await checkSimilarity({
+      lsTitle: lsTitle as string,
+      title,
+      supplier: SupplierEnum.REDONE,
+      sku: sku as string,
+    });
+
+    if (!isSimilar) {
+      if (!isSimilar) {
+        logger.error(
+          `SIMILARITY FAILED SKIPPING PRODUCT: ${similarity} | SKU: ${sku}`
+        );
+        logger.log(`LS TITLE: ${lsTitle} | WEB TITLE: ${title}`);
+
+        return;
+      }
+    }
+
     const existingProduct = await MProduct.findOne({ sku }).lean();
 
     if (!config.UPSERT_DATA && existingProduct) {
       logger.warn(`Existing Product: ${sku}`);
       return;
     }
-
-    await page.goto(productUrl, { timeout: 60000, waitUntil: 'networkidle2' });
-
-    let title = await page.$eval('[data-cy="product-display-name"]', (title) =>
-      title.textContent?.trim()
-    );
 
     const mainImgSrc = await page.$eval('img.main-image', (img) => img.src);
 

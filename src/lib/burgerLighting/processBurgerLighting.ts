@@ -11,10 +11,8 @@ import generateCsv, {
 } from '../utils/generateCsv';
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
-import NumberParser from 'intl-number-parser';
 import { MRawProduct, RawProduct } from '../../models/RawProduct';
 import processWithRetry from '../utils/processUrl';
-import promptSync from 'prompt-sync';
 import {
   MProcess,
   ProcessDocument,
@@ -73,12 +71,8 @@ export default async function processBurgerLighting() {
 
   await browser.close();
 
-  const productSimilarities = await MProductSimilarity.find({
-    supplier: SupplierEnum.BURGERLIGHTING,
-  });
-
   await generateSimilarityReport(
-    productSimilarities,
+    SupplierEnum.BURGERLIGHTING,
     'burgerLighting-product-similarity-report',
     './output/burgerLighting'
   );

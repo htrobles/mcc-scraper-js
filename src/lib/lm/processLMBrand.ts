@@ -80,12 +80,8 @@ export default async function processLMBrand() {
 
   await browser.close();
 
-  const productSimilarities = await MProductSimilarity.find({
-    supplier: SupplierEnum.LM,
-  });
-
   await generateSimilarityReport(
-    productSimilarities,
+    SupplierEnum.LM,
     'lm-product-similarity-report',
     './output/lm-brand'
   );

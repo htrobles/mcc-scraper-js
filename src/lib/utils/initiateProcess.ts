@@ -24,6 +24,8 @@ export default async function initiateProcess(supplier: SupplierEnum) {
         supplier: supplier,
         status: ProcessStatusEnum.ONGOING,
       }).save();
+
+      return unfinishedProcess;
     } else {
       logger.info('Continuing previous process...');
 
@@ -32,11 +34,15 @@ export default async function initiateProcess(supplier: SupplierEnum) {
           status: ProcessStatusEnum.ONGOING,
         });
       }
+
+      return unfinishedProcess;
     }
   } else {
-    await new MProcess({
+    const newProcess = await new MProcess({
       supplier: supplier,
       status: ProcessStatusEnum.ONGOING,
     }).save();
+
+    return newProcess;
   }
 }

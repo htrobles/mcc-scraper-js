@@ -1,5 +1,7 @@
 import logger from 'node-color-log';
 import { createObjectCsvWriter } from 'csv-writer';
+import { SupplierEnum } from '../../models/Product';
+import { MProductSimilarity } from '../../models/ProductSimilarity';
 
 export default async function generateCsv(
   products: { [key: string]: any }[],
@@ -91,10 +93,14 @@ export async function generateShopifyCsv(
 }
 
 export async function generateSimilarityReport(
-  productSimilarities: { [key: string]: any }[],
+  supplier: SupplierEnum,
   filename: string,
   outDir: string
 ) {
+  const productSimilarities = await MProductSimilarity.find({
+    supplier: SupplierEnum.REDONE,
+  });
+
   const headers = [
     { id: 'sku', title: 'Variant SKU' },
     { id: 'lsTitle', title: 'Lightspeed Title' },
