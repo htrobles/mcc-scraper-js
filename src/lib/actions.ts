@@ -18,6 +18,7 @@ import processLM from './lm/processLM';
 import processBurgerLighting from './burgerLighting/processBurgerLighting';
 import processLMBrand from './lm/processLMBrand';
 import processRedOne from './redOne/processRedOne';
+import processMartin from './martin/processMartin';
 
 const prompt = promptSync({ sigint: true });
 
@@ -83,6 +84,9 @@ export async function getProductInfo() {
       break;
     case SupplierEnum.REDONE:
       await processRedOne();
+
+    case SupplierEnum.MARTIN:
+      await processMartin();
     default:
       break;
   }

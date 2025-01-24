@@ -26,6 +26,7 @@ const config = cleanEnv(process.env, {
   LM_URL: str(),
   BURGER_LIGHTING_URL: str(),
   RED_ONE_URL: str(),
+  MARTIN_URL: str(),
 });
 
 export default config;
