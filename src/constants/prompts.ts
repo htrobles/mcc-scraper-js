@@ -45,6 +45,10 @@ export const supplierChoices = [
     key: SupplierEnum.REDONE,
     label: 'Red One',
   },
+  {
+    key: SupplierEnum.MARTIN,
+    label: 'Martin',
+  }
 ];
 
 export interface StoreChoice {

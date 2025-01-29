@@ -35,6 +35,8 @@ export async function saveRawProducts(filename: string = 'products.csv') {
   let page = 1;
   let hasMore = true;
 
+  let savedRawProducts: RawProduct[] = [];
+
   while (hasMore) {
     const x = (page - 1) * PAGE_SIZE;
     const y = page * PAGE_SIZE - 1;
@@ -42,7 +44,11 @@ export async function saveRawProducts(filename: string = 'products.csv') {
     const products = rawProducts.slice(x, y);
 
     try {
-      await MRawProduct.insertMany(products);
+      const dbProducts = (await MRawProduct.insertMany(products, {
+        lean: true,
+      })) as RawProduct[];
+
+      savedRawProducts.push(...dbProducts);
 
       if (totalCount > y + 1) {
         page++;
@@ -54,6 +60,8 @@ export async function saveRawProducts(filename: string = 'products.csv') {
       throw new Error('Error');
     }
   }
+
+  return savedRawProducts;
 }
 
 export async function clearRawProducts() {
