@@ -56,6 +56,7 @@ export default async function processMartin() {
   }
 
   for (let rawProduct of rawProducts) {
+    logger.info(`Processing SKU: ${rawProduct.sku}`);
     await processWithRetry(() => processSku(rawProduct as RawProduct, page));
   }
 
@@ -202,18 +203,6 @@ async function processProductUrl(
       images.push(imageName);
     }
   }
-
-  console.log({
-    systemId: rawProduct.systemId,
-    sku: rawSku,
-    title,
-    descriptionText: description.text,
-    descriptionHtml: description.html,
-    images,
-    featuredImage,
-    supplier: SupplierEnum.MARTIN,
-    missingDescription,
-  });
 
   if (config.UPSERT_DATA && !!existingProduct) {
     await MProduct.findByIdAndUpdate(existingProduct._id, {
