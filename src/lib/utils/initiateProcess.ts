@@ -20,12 +20,10 @@ export default async function initiateProcess(supplier: SupplierEnum) {
       await MProcess.findByIdAndUpdate(unfinishedProcess._id, {
         status: ProcessStatusEnum.CANCELLED,
       });
-      await new MProcess({
+      return await new MProcess({
         supplier: supplier,
         status: ProcessStatusEnum.ONGOING,
       }).save();
-
-      return unfinishedProcess;
     } else {
       logger.info('Continuing previous process...');
 
