@@ -87,13 +87,22 @@ export async function processProductUrl(
       }
     } catch (error) {}
 
-    const description = await page.$eval('.details p', (description) => {
-      description.removeAttribute('class');
-      const text = description.textContent?.trim().replace(/\n/g, '\\n');
-      const html = description.outerHTML;
+    let description;
 
-      return { text, html };
-    });
+    try {
+      description = await page.$eval('.details p', (description) => {
+        description.removeAttribute('class');
+        const text = description.textContent?.trim().replace(/\n/g, '\\n');
+        const html = description.outerHTML;
+
+        return { text, html };
+      });
+    } catch (error) {
+      description = {
+        text: title,
+        html: `<p>${title}</p>`,
+      };
+    }
 
     description.html = parseHtml(description.html);
 
