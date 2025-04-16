@@ -14,7 +14,7 @@ import generateCsv, {
 import parseHtml from '../utils/parseHtml';
 import { ProductImage } from '../../models/ProductTypes';
 import { MRawProduct, RawProduct } from '../../models/RawProduct';
-import processWithRetry from '../utils/processUrl';
+import processWithRetry from '../utils/processWithRetry';
 import {
   MProcess,
   ProcessDocument,

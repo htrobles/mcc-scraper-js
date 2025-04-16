@@ -90,9 +90,10 @@ export async function getProductInfo() {
       break;
     case SupplierEnum.REDONE:
       await processRedOne();
-
     case SupplierEnum.MARTIN:
       await processMartin();
+    case SupplierEnum.TAYLOR:
+      await processTaylor();
     default:
       break;
   }

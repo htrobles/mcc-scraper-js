@@ -10,6 +10,7 @@ export enum SupplierEnum {
   BURGERLIGHTING = 'BurgerLighting',
   REDONE = 'RedOne',
   MARTIN = 'Martin',
+  TAYLOR = 'Taylor',
 }
 
 export enum ContactInfoEnum {

@@ -14,6 +14,7 @@ export async function saveRawProducts(filename: string = 'products.csv') {
       const systemId = row[0];
       const title = row[5];
       const customSku = row[3];
+      const upc = row[1];
 
       if (!sku) {
         return prev;
@@ -26,6 +27,7 @@ export async function saveRawProducts(filename: string = 'products.csv') {
           systemId,
           title,
           customSku,
+          upc,
         },
       ];
     }, [] as RawProduct[])
