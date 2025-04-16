@@ -1,10 +1,15 @@
-import { compareProductPricing, getProductInfo } from '../lib/actions';
-import { SupplierEnum } from '../models/Product';
+import {
+  compareProductPricing,
+  getContactInfo,
+  getProductInfo,
+} from '../lib/actions';
+import { ContactInfoEnum, SupplierEnum } from '../models/Product';
 import { StoreEnum } from '../models/ProductPricing';
 
 export const typeChoices = [
   { label: 'Get Product Information', action: getProductInfo },
   { label: 'Compare Product Pricing', action: compareProductPricing },
+  { label: 'Get Contact Information', action: getContactInfo },
 ];
 
 export const supplierChoices = [
@@ -49,6 +54,13 @@ export const supplierChoices = [
     key: SupplierEnum.MARTIN,
     label: 'Martin',
   }
+];
+
+export const contactInfoChoices = [
+  {
+    key: ContactInfoEnum.SKATE_ONTARIO,
+    label: 'Skate Ontario',
+  },
 ];
 
 export interface StoreChoice {
