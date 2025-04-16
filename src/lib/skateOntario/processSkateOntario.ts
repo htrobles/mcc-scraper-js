@@ -70,6 +70,10 @@ async function processClub(clubLink: string, page: Page) {
   let secondaryAddresses: (string | undefined)[] = [];
   let phone: string | undefined = undefined;
   let website: string | undefined = undefined;
+  let instagram: string | undefined = undefined;
+  let facebook: string | undefined = undefined;
+  let twitter: string | undefined = undefined;
+  let youtube: string | undefined = undefined;
 
   try {
     name = await page.$eval('h2.entry-title', (el) => el.textContent?.trim());
@@ -93,24 +97,45 @@ async function processClub(clubLink: string, page: Page) {
     secondaryAddresses = await page.$$eval('p.secondary_address', (elements) =>
       elements.map((el) => el.textContent?.split(':')[1].trim())
     );
-  } catch (error) {
-    logger.warn(`Could not find secondary addresses for ${clubLink}`);
-  }
+  } catch (error) {}
 
   try {
     phone = await page.$eval('p.contact_phone', (el) => el.textContent?.trim());
-  } catch (error) {
-    logger.warn(`Could not find phone number for ${clubLink}`);
-  }
+  } catch (error) {}
 
   try {
     website =
       (await page.$eval('li.website_hover a', (el) =>
         el.getAttribute('href')
       )) || undefined;
-  } catch (error) {
-    logger.warn(`Could not find website for ${clubLink}`);
-  }
+  } catch (error) {}
+
+  try {
+    instagram =
+      (await page.$eval('li.insta_hover a', (el) => el.getAttribute('href'))) ||
+      undefined;
+  } catch (error) {}
+
+  try {
+    facebook =
+      (await page.$eval('li.facebook_hover a', (el) =>
+        el.getAttribute('href')
+      )) || undefined;
+  } catch (error) {}
+
+  try {
+    twitter =
+      (await page.$eval('li.twitter_hover a', (el) =>
+        el.getAttribute('href')
+      )) || undefined;
+  } catch (error) {}
+
+  try {
+    youtube =
+      (await page.$eval('li.youtube_hover a', (el) =>
+        el.getAttribute('href')
+      )) || undefined;
+  } catch (error) {}
 
   const club: ContactInfo = {
     name: name || '',
@@ -119,6 +144,10 @@ async function processClub(clubLink: string, page: Page) {
     address3: secondaryAddresses[1] || null,
     phone,
     website,
+    instagram,
+    facebook,
+    twitter,
+    youtube,
   };
 
   await MContactInfo.create(club);

@@ -140,6 +140,10 @@ export async function generateContactInfoCsv(filename: string) {
     { id: 'address3', title: 'Address 3' },
     { id: 'phone', title: 'Phone' },
     { id: 'website', title: 'Website' },
+    { id: 'instagram', title: 'Instagram' },
+    { id: 'facebook', title: 'Facebook' },
+    { id: 'twitter', title: 'Twitter' },
+    { id: 'youtube', title: 'Youtube' },
   ];
 
   let finalFilename = filename;

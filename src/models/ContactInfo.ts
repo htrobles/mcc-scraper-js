@@ -7,6 +7,10 @@ export type ContactInfo = {
   address3?: string | null;
   phone?: string | null;
   website?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  twitter?: string | null;
+  youtube?: string | null;
 };
 
 const contactInfoSchema = new mongoose.Schema({
@@ -16,6 +20,10 @@ const contactInfoSchema = new mongoose.Schema({
   address3: { type: String },
   phone: { type: String },
   website: { type: String },
+  instagram: { type: String },
+  facebook: { type: String },
+  twitter: { type: String },
+  youtube: { type: String },
 });
 
 export const MContactInfo = mongoose.model('ContactInfo', contactInfoSchema);
