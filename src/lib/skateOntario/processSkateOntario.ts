@@ -151,4 +151,5 @@ async function processClub(clubLink: string, page: Page) {
   };
 
   await MContactInfo.create(club);
+  logger.success(`Processed club ${name} for ${clubLink}`);
 }
