@@ -13,6 +13,10 @@ export enum SupplierEnum {
   TAYLOR = 'Taylor',
 }
 
+export enum ContactInfoEnum {
+  SKATE_ONTARIO = 'SkateOntario',
+}
+
 export interface Product {
   systemId?: string;
   sku: string;

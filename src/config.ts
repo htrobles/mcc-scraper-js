@@ -28,6 +28,7 @@ const config = cleanEnv(process.env, {
   RED_ONE_URL: str(),
   MARTIN_URL: str(),
   TAYLOR_URL: str(),
+  SKATE_ONTARIO_URL: str(),
 });
 
 export default config;

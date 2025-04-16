@@ -2,6 +2,9 @@ import logger from 'node-color-log';
 import { createObjectCsvWriter } from 'csv-writer';
 import { SupplierEnum } from '../../models/Product';
 import { MProductSimilarity } from '../../models/ProductSimilarity';
+import { MContactInfo } from '../../models/ContactInfo';
+import fs from 'fs';
+import path from 'path';
 
 export default async function generateCsv(
   products: { [key: string]: any }[],
@@ -123,6 +126,47 @@ export async function generateSimilarityReport(
 
   csvWriter
     .writeRecords(productSimilarities)
+    .then(() => logger.success('CSV file created successfully'))
+    .catch((err) => logger.error(err));
+}
+
+export async function generateContactInfoCsv(filename: string) {
+  const contactInfos = await MContactInfo.find({});
+
+  const headers = [
+    { id: 'name', title: 'Name' },
+    { id: 'address1', title: 'Address 1' },
+    { id: 'address2', title: 'Address 2' },
+    { id: 'address3', title: 'Address 3' },
+    { id: 'phone', title: 'Phone' },
+    { id: 'website', title: 'Website' },
+    { id: 'instagram', title: 'Instagram' },
+    { id: 'facebook', title: 'Facebook' },
+    { id: 'twitter', title: 'Twitter' },
+    { id: 'youtube', title: 'Youtube' },
+  ];
+
+  let finalFilename = filename;
+
+  if (!filename.endsWith('.csv')) {
+    finalFilename = `${filename}.csv`;
+  }
+
+  const outputDir = './output/contact-info';
+  const pathname = path.join(outputDir, finalFilename);
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: pathname,
+    header: headers,
+  });
+
+  csvWriter
+    .writeRecords(contactInfos)
     .then(() => logger.success('CSV file created successfully'))
     .catch((err) => logger.error(err));
 }

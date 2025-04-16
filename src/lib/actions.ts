@@ -2,14 +2,18 @@ import mongoose from 'mongoose';
 
 import processAllparts from './allparts/processAllparts';
 import logger from 'node-color-log';
-import { MProduct, SupplierEnum } from '../models/Product';
+import { ContactInfoEnum, MProduct, SupplierEnum } from '../models/Product';
 import config from '../config';
 import processCoastMusic from './jam/processCoastMusic';
 import promptSync from 'prompt-sync';
 import processKorgCanada from './jam/processKorgCanada';
 import processFender from './fender/processFender';
 import processDaddario from './daddario/processDaddario';
-import { storeChoices, supplierChoices } from '../constants/prompts';
+import {
+  storeChoices,
+  supplierChoices,
+  contactInfoChoices,
+} from '../constants/prompts';
 import { StoreEnum } from '../models/ProductPricing';
 import processTomLeeMusic from './tomleemusic/processTomLeeMusic';
 import processAcclaimMusic from './acclaimmusic/processAcclaimMusic';
@@ -20,6 +24,7 @@ import processLMBrand from './lm/processLMBrand';
 import processRedOne from './redOne/processRedOne';
 import processMartin from './martin/processMartin';
 import processTaylor from './taylor/processTaylor';
+import processSkateOntario from './skateOntario/processSkateOntario';
 
 const prompt = promptSync({ sigint: true });
 
@@ -121,6 +126,28 @@ export async function compareProductPricing() {
       break;
 
     default:
+      break;
+  }
+
+  await mongoose.connection.close();
+  logger.success('All Process done. Database connection closed');
+}
+
+export async function getContactInfo() {
+  logger.color('blue').bold().log('Which website should we process?');
+  contactInfoChoices.forEach(({ label }, index) => {
+    logger.log(`${index + 1} : ${label}`);
+  });
+
+  const input = parseInt(prompt('Enter number of choice: '));
+  const storeKey = contactInfoChoices[input - 1].key;
+
+  await mongoose.connect(config.MONGODB_URI);
+  logger.success('Connected to Database');
+
+  switch (storeKey) {
+    case ContactInfoEnum.SKATE_ONTARIO:
+      await processSkateOntario();
       break;
   }
 
