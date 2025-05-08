@@ -4,6 +4,7 @@ export enum StoreEnum {
   TOMLEEMUSIC = 'TomLeeMusic',
   ACCLAIMMUSIC = 'AcclaimMusic',
   COSMOMUSIC = 'CosmoMusic',
+  LONGMCQUADEBrand = 'LongMcQuadeBrand',
 }
 
 export interface ProductPricing {

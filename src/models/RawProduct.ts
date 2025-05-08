@@ -6,6 +6,7 @@ export interface RawProduct {
   customSku?: string;
   title?: string;
   upc?: string;
+  price?: number;
 }
 
 const rawProductSchema = new mongoose.Schema({
@@ -14,6 +15,7 @@ const rawProductSchema = new mongoose.Schema({
   customSku: { type: String },
   upc: { type: String },
   title: { type: String },
+  price: { type: Number },
 });
 
 export const MRawProduct = mongoose.model('RawProduct', rawProductSchema);
