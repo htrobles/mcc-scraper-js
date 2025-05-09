@@ -15,6 +15,10 @@ export async function saveRawProducts(filename: string = 'products.csv') {
       const title = row[5];
       const customSku = row[3];
       const upc = row[1];
+      let price = row[8];
+
+      // Convert price string by removing $ and commas, then parse to float
+      price = price.replace(/[$,]/g, '');
 
       if (!sku) {
         return prev;
@@ -28,6 +32,7 @@ export async function saveRawProducts(filename: string = 'products.csv') {
           title,
           customSku,
           upc,
+          price: parseFloat(price),
         },
       ];
     }, [] as RawProduct[])

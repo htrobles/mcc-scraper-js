@@ -77,16 +77,21 @@ export const storeChoices: StoreChoice[] = [
   {
     key: StoreEnum.TOMLEEMUSIC,
     label: 'Tom Lee Music',
-    fileOutputName: 'tom-lee-music',
+    fileOutputName: 'tom-lee-music-comparrison',
   },
   {
     key: StoreEnum.ACCLAIMMUSIC,
     label: 'Acclaim Music',
-    fileOutputName: 'acclaim-music',
+    fileOutputName: 'acclaim-music-comparrison',
   },
   {
     key: StoreEnum.COSMOMUSIC,
     label: 'Cosmo Music',
-    fileOutputName: 'cosmo-music',
+    fileOutputName: 'cosmo-music-comparrison',
+  },
+  {
+    key: StoreEnum.LONGMCQUADEBrand,
+    label: 'Long McQuade Brand',
+    fileOutputName: 'long-mcquade-brand-comparison',
   },
 ];

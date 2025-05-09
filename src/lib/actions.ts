@@ -25,6 +25,7 @@ import processRedOne from './redOne/processRedOne';
 import processMartin from './martin/processMartin';
 import processTaylor from './taylor/processTaylor';
 import processSkateOntario from './skateOntario/processSkateOntario';
+import priceMatchLMBrandPage from './lm/priceMatchLMBrandPage';
 
 const prompt = promptSync({ sigint: true });
 
@@ -123,6 +124,9 @@ export async function compareProductPricing() {
       break;
     case StoreEnum.COSMOMUSIC:
       await processCosmoMusic();
+      break;
+    case StoreEnum.LONGMCQUADEBrand:
+      await priceMatchLMBrandPage();
       break;
 
     default:

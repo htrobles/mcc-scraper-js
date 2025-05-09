@@ -144,3 +144,48 @@ export async function generatePriceComparisonCsv(store: StoreEnum) {
     console.log(error);
   }
 }
+
+export async function generatePriceComparisonCsvV2(store: StoreEnum) {
+  const { label, fileOutputName } = storeChoices.find(
+    (storeChoice) => storeChoice.key === store
+  ) as StoreChoice;
+
+  try {
+    let page = 1;
+
+    const totalCount = await MProductPricing.countDocuments({
+      store: store,
+    });
+
+    let totalProcessed = 0;
+
+    const pricingsToProcess: { [key: string]: any }[] = [];
+
+    while (totalCount > totalProcessed) {
+      let offset = (page - 1) * PRICE_COMPARISON_PAGE_SIZE;
+
+      let pricings = await MProductPricing.find({
+        store: store,
+      })
+        .sort({ sku: 1 })
+        .skip(offset)
+        .limit(PRICE_COMPARISON_PAGE_SIZE)
+        .lean();
+
+      pricingsToProcess.push(...pricings);
+      totalProcessed += pricings.length;
+      page++;
+    }
+
+    logger.success(`Finished processing ${label} website`);
+
+    await generatePricingCsv(
+      pricingsToProcess,
+      `${fileOutputName}.csv`,
+      './output/store-pricings'
+    );
+  } catch (error) {
+    logger.error('Failed to generate Price Comparison');
+    console.log(error);
+  }
+}
